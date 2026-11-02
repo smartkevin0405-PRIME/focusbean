@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="460" viewBox="0 0 360 230">
+<rect width="360" height="230" fill="#fff"/>
+<ellipse cx="180" cy="118" rx="162" ry="102" fill="#eef4ec"/>
+<g stroke="#dce8de" stroke-width="1"><path d="M40 32v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174m24-174v174"/><path d="M32 40h296M32 64h296M32 88h296M32 112h296M32 136h296M32 160h296M32 184h296M32 208h296"/></g>
+<ellipse cx="180.5" cy="201" rx="59.5" ry="7" fill="#d5e1d2"/>
+<ellipse cx="182" cy="110" rx="116" ry="30" fill="none" stroke="#8eafa9" stroke-width="2" transform="rotate(-18 182 110)"/><circle cx="286" cy="98" r="5" fill="#d5aa4c"/>
+<path d="M150 176l-8 19m63-19 9 19" stroke="#28574a" stroke-width="9" stroke-linecap="round"/>
+<path d="M219 43C264 68 247 133 225 168C203 206 133 195 116 153C92 96 128 38 171 42C186 44 192 57 187 73C182 90 194 99 205 92C219 84 222 61 219 43Z" fill="#729a63"/>
+<ellipse cx="150.5" cy="80.5" rx="20.5" ry="18.5" fill="#99ba7b"/>
+<path d="M118 136l35 10 22 17 21-20 44-14-15 44Q183 205 137 176Z" fill="#fafcf5"/><path d="M175 163v25M148 158h12" stroke="#c5d5c8" stroke-width="2"/>
+<g fill="#203f37"><ellipse cx="146.5" cy="113.5" rx="3.5" ry="5.5"/><ellipse cx="187.5" cy="113.5" rx="3.5" ry="5.5"/></g>
+<g fill="#dab7a0"><ellipse cx="137.5" cy="126" rx="7.5" ry="4"/><ellipse cx="198.5" cy="126" rx="7.5" ry="4"/></g>
+<path d="M159 128q9 11 17 0" fill="none" stroke="#203f37" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M116 143l-19 11m137-12 19 8" stroke="#28574a" stroke-width="7" stroke-linecap="round"/>
+<g transform="rotate(12 258 155)"><rect x="242" y="136" width="34" height="43" rx="4" fill="#213d36"/><rect x="245" y="139" width="28" height="37" rx="2" fill="#eaf1d4"/><text x="254" y="156" fill="#376955" font-family="serif" font-style="italic" font-size="14">ψ</text><path d="M249 164h20m-20 5h16" stroke="#9db69b"/></g>
+<path d="M166 48l-5-21" stroke="#28574a" stroke-width="3"/><ellipse cx="169.5" cy="23.5" rx="9.5" ry="8.5" fill="#92b97d"/>
+<g fill="none" stroke="#81b1b4" stroke-width="2"><path d="M67 130q17-17 31 0M60 124q24-23 46 0M53 118q31-29 60 0"/></g>
+<g fill="#8498b7" font-family="serif" font-style="italic" font-size="14"><text x="244" y="57">E = ℏω</text><text x="91" y="74">∫</text></g>
+<circle cx="288" cy="186" r="12" fill="#e3c877"/><text x="282" y="193" fill="#685b2f" font-size="17" font-family="sans-serif" font-weight="bold">P</text>
+</svg>

@@ -1,0 +1,32 @@
+# Local build outputs and SDK/dependencies
+/build/
+/tooling/
+/node_modules/
+/inspection/
+*.apk
+*.idsig
+*.aab
+*.class
+*.dex
+*.log
+__pycache__/
+*.pyc
+# Signing material and credentials must stay outside this repository
+/signing/
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.key
+*.pem
+.env
+.env.*
+local.properties
+keystore.properties
+# Device data and captures
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.hprof
+*.logcat

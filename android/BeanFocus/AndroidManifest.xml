@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="app.bean.focus" android:versionCode="13" android:versionName="0.13-beta">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+  <queries>
+    <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
+    <intent><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https"/></intent>
+    <package android:name="com.google.android.youtube"/>
+  </queries>
+  <application android:label="집중콩" android:theme="@style/AppTheme" android:icon="@drawable/icon" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
+    <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+    <activity android:name=".StudyActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
+    <activity android:name=".UpdateActivity" android:exported="false"/>
+    <provider android:name=".UpdateFileProvider" android:authorities="app.bean.focus.update" android:exported="false" android:grantUriPermissions="true"/>
+    <activity android:name=".StatsActivity" android:exported="false"/>
+    <activity android:name=".FormulaActivity" android:exported="false"/>
+    <service android:name=".FocusService" android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:label="집중콩 · 게임과 쇼츠 차단">
+      <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
+      <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility"/>
+    </service>
+  </application>
+</manifest>

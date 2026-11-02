@@ -1,0 +1,5 @@
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+ android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewTextChanged|typeWindowsChanged|typeViewScrolled|typeViewClicked"
+ android:accessibilityFeedbackType="feedbackGeneric" android:notificationTimeout="180"
+ android:canRetrieveWindowContent="true" android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
+ android:description="@string/service_description" android:settingsActivity="app.bean.focus.MainActivity"/>
