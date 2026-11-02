@@ -1,0 +1,67 @@
+name: Publish signed BeanFocus APK
+on:
+  push:
+    branches: [main]
+    paths: [release/release.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: beanfocus-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Decode and validate the signed APK
+        id: apk
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, zipfile
+          meta = json.loads(pathlib.Path("release/release.json").read_text())
+          version = meta["versionName"]
+          assert re.fullmatch(r"0\.[0-9]+-beta", version), "Invalid version"
+          assert isinstance(meta["versionCode"], int) and meta["versionCode"] > 0
+          assert meta["package"] == "app.bean.focus"
+          expected = meta["sha256"]
+          assert re.fullmatch(r"[0-9a-f]{64}", expected)
+          data = base64.b64decode(pathlib.Path("release/BeanFocus.apk.b64").read_text(), validate=True)
+          assert len(data) < 25 * 1024 * 1024
+          assert hashlib.sha256(data).hexdigest() == expected, "APK digest mismatch"
+          pathlib.Path("BeanFocus-latest.apk").write_bytes(data)
+          with zipfile.ZipFile("BeanFocus-latest.apk") as z:
+              assert "AndroidManifest.xml" in z.namelist() and "classes.dex" in z.namelist()
+          pathlib.Path("SHA256SUMS").write_text(expected + "  BeanFocus-latest.apk\n")
+          pathlib.Path("release-notes.md").write_text(
+              "집중콩 " + version + "\n\n기존 앱을 삭제하지 말고 업데이트 설치하세요.\n"
+              "일반 유튜브 웹 허용, 분 단위 집중 시간, 통계 그래프, 고정 웹 업데이트 주소를 포함합니다.\n"
+              "Android 설치 확인이 필요합니다. 소스와 서명 개인키는 이 저장소에 게시하지 않습니다.\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("tag=v" + version + "\n")
+              out.write("name=" + version + "\n")
+          PY
+          sha256sum --check SHA256SUMS
+      - name: Publish APK and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.apk.outputs.tag }}
+          RELEASE_NAME: ${{ steps.apk.outputs.name }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+            if [ "$draft" != "true" ]; then
+              echo "This version is already published. Increase the app version for a new release."
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft --title "집중콩 $RELEASE_NAME" --notes-file release-notes.md
+          fi
+          gh release upload "$RELEASE_TAG" BeanFocus-latest.apk SHA256SUMS --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest
