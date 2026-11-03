@@ -1,7 +1,8 @@
 {
   "package": "app.bean.focus",
-  "versionCode": 13,
-  "versionName": "0.13-beta",
-  "sha256": "0142e774ebdb62acc17033fa6fdc154ea0d1ba24d8c4ed2dc823f35e23f40fed",
-  "certificateSha256": "5e7325b0fbb0af5df2c80c300f0ac8d7e6e1ccd1d23bae0f8b6e2baec4b748f4"
+  "versionCode": 14,
+  "versionName": "0.14-beta",
+  "sha256": "0c7aede754bbf5ddf0a2c8ba72eae86498410066ef28dd3206bb958f74c07d81",
+  "certificateSha256": "5e7325b0fbb0af5df2c80c300f0ac8d7e6e1ccd1d23bae0f8b6e2baec4b748f4",
+  "sourceCommit": "3a521b7c248a2758d1a87eac527e3db2fbed9f12"
 }
