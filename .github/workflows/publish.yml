@@ -11,12 +11,14 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Decode and validate the signed APK
         id: apk
         shell: bash
@@ -39,13 +41,22 @@ jobs:
           pathlib.Path("SHA256SUMS").write_text(expected + "  BeanFocus-latest.apk\n")
           pathlib.Path("release-notes.md").write_text(
               "집중콩 " + version + "\n\n기존 앱을 삭제하지 말고 업데이트 설치하세요.\n"
-              "일반 유튜브 웹 허용, 분 단위 집중 시간, 통계 그래프, 고정 웹 업데이트 주소를 포함합니다.\n"
-              "Android 설치 확인이 필요합니다. 소스와 서명 개인키는 이 저장소에 게시하지 않습니다.\n")
+              "브라우저 주소 감지와 검사 비용을 개선하고, 현재 쇼츠 증거가 없을 때의 자동 뒤로 이동을 제거했습니다.\n"
+              "일반 영상은 허용합니다. 삼성 인터넷이 경로와 웹 정보를 제공하지 않는 화면은 여전히 판별이 제한됩니다.\n"
+              "실기기 차단 성공과 접속 속도 개선은 별도 확인이 필요합니다.\n"
+              "Android 설치 확인이 필요합니다. 소스는 저장소에 공개하며 개인 서명키는 공개하지 않습니다.\n")
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write("tag=v" + version + "\n")
               out.write("name=" + version + "\n")
           PY
           sha256sum --check SHA256SUMS
+      - name: Verify package, version, signing certificate and source revision
+        shell: bash
+        run: |
+          python3 .github/scripts/verify_apk.py \
+            --apk BeanFocus-latest.apk \
+            --metadata release/release.json \
+            --build-tools "$ANDROID_HOME/build-tools/35.0.0"
       - name: Publish APK and checksums
         env:
           GH_TOKEN: ${{ github.token }}
