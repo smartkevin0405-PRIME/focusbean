@@ -3,8 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${ECJ_JAR:?Set ECJ_JAR to Eclipse ECJ jar}"
 mkdir -p build/test-pure build/test-state build/test-growth build/test-telemetry build/test-browser
-java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/test-pure src/app/bean/focus/{UrlRules,BrowserAddress,BlockPolicy,DeviceConstants,UpdateRules,WindowPolicy,PipDismissTracker,RecentClose,InstallTimePolicy,TimerRules,GrowthRules,XpMath}.java tests/{UrlRulesTest,BrowserAddressTest,BlockPolicyTest,WindowPolicyTest,UpdateRulesTest,RecentCloseTest,TimerRulesTest,GrowthRulesTest,XpMathTest}.java
-for t in UrlRulesTest BrowserAddressTest BlockPolicyTest WindowPolicyTest UpdateRulesTest RecentCloseTest TimerRulesTest GrowthRulesTest XpMathTest; do java -cp build/test-pure "app.bean.focus.$t"; done
+java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/test-pure src/app/bean/focus/{UrlRules,BrowserAddress,BrowserScanPolicy,BlockPolicy,DeviceConstants,UpdateRules,WindowPolicy,PipDismissTracker,RecentClose,InstallTimePolicy,TimerRules,GrowthRules,XpMath}.java tests/{UrlRulesTest,BrowserAddressTest,BrowserScanPolicyTest,BlockPolicyTest,WindowPolicyTest,UpdateRulesTest,RecentCloseTest,TimerRulesTest,GrowthRulesTest,XpMathTest}.java
+for t in UrlRulesTest BrowserAddressTest BrowserScanPolicyTest BlockPolicyTest WindowPolicyTest UpdateRulesTest RecentCloseTest TimerRulesTest GrowthRulesTest XpMathTest; do java -cp build/test-pure "app.bean.focus.$t"; done
 java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/test-state tests/fakes/android/{content/Context,content/SharedPreferences,os/SystemClock,os/Build,provider/Settings}.java tests/fakes/app/bean/focus/Prefs.java src/app/bean/focus/{FocusLock,TimerRules,NetworkTime,RemovalAccess,BlockPolicy,BrowserAddress,UrlRules,DeviceConstants,NewPackageLedger,ShortcutCheck,InstallTimePolicy}.java tests/{FocusLockStateTest,RemovalAccessTest,LedgerShortcutTest,NetworkTimeTest}.java
 java -cp build/test-state app.bean.focus.FocusLockStateTest
 java -cp build/test-state app.bean.focus.RemovalAccessTest

@@ -1,13 +1,11 @@
-# 집중콩 0.13-beta 원본 소스 빌드
+# 집중콩 소스 빌드
 
-이 디렉터리는 작업 공간의 0.13-beta(versionCode 13) 전체 앱 소스다.
-`src/`, `res/`, `assets/`, `design/`, `AndroidManifest.xml`과 테스트 코드는 원본 그대로다.
+이 디렉터리는 0.13-beta 원본에서 이어서 수정한 0.14-beta(versionCode 14) 앱 소스다.
+현재 변경 내역과 실기기 검증의 한계는 `REPORT-0.14.md`에 기록한다.
 서명키·암호·토큰, APK, SDK, 빌드 산출물, 실행 로그, 기기의 개인 기록은 포함하지 않는다.
 
-공개용 조정은 `build.sh`의 내장 서명 설정을 외부 환경변수로 변경하고
-`UNSIGNED_ONLY=1` 옵션을 추가한 것, README의 서명 안내를 정정한 것뿐이다.
-앱 기능·버전·리소스·테스트에는 변경이 없다. 이 커밋은 APK를 게시하지 않는다.
-기존 저장소 루트의 README, `release/`, `.github/workflows/`는 그대로 보존한다.
+서명 설정은 외부 환경변수로만 전달한다. 원본 소스 공개 이후 브라우저 감지와 검사 주기를
+수정했으며 Windows 빌드/테스트와 소스 검증 CI를 추가했다. `release/`의 기존 APK는 보존한다.
 
 ## 도구
 
@@ -45,11 +43,11 @@ export ECJ_JAR=/absolute/path/to/ecj-3.37.0.jar
 
 ```bash
 bash tests/run-tests.sh
-python3 tests/audit_013.py
+python3 tests/audit_014.py
 ```
 
-기본 러너는 Java 테스트 19개와 Node 테스트 4개를 실행한다.
-`audit_010.py`~`audit_012.py`는 이전 버전 전용 기록이며 0.13 검증에는 `audit_013.py`를 사용한다.
+기본 러너는 Java 테스트 20개와 Node 테스트 4개를 실행한다.
+`audit_010.py`~`audit_013.py`는 이전 버전 전용 기록이며 현재 검증에는 `audit_014.py`를 사용한다.
 Android 대역 테스트이므로 실제 One UI 접근성·PiP·보안 폴더 동작 검증을 대신하지 않는다.
 
 선택적인 화면 렌더링 검증은 Playwright와 Chromium을 별도로 준비한 뒤 실행한다.
@@ -91,11 +89,44 @@ bash build.sh
 unset SIGNING_STORE_PASSWORD SIGNING_KEY_PASSWORD
 ```
 
-결과: `BeanFocus-0.13-beta.apk`. 스크립트는 키를 새로 만들거나 업로드하지 않는다.
+결과: `BeanFocus-0.14-beta.apk`. 스크립트는 키를 새로 만들거나 업로드하지 않는다.
 암호는 apksigner에 환경변수로 전달하며 저장소 파일·명령 인수에 직접 넣지 않는다.
 
 ## 파일 출처 확인
 
-`SOURCE-MANIFEST.json`은 이 디렉터리에 포함된 파일들의 SHA-256과
-원본 대비 공개용 조정 파일 목록을 기록한다(자기 자신은 제외).
-테스트 로그·개인 데이터는 포함하지 않는다.
+`SOURCE-MANIFEST.json`은 최초 공개한 **0.13 원본 스냅샷**의 SHA-256과
+공개용 조정 파일 목록을 기록한다. 이후 수정 파일의 현재 해시 목록은 아니며,
+0.14 이후 변경 내역은 Git 커밋으로 추적한다. 테스트 로그·개인 데이터는 포함하지 않는다.
+
+## Windows에서 테스트·빌드
+
+`tests/run-tests.ps1`과 `build.ps1`은 PowerShell용 러너다. JDK와 Node.js,
+Android SDK를 사용하며 ECJ·Python·Bash를 별도로 설치하지 않아도 된다.
+테스트는 `javac --release 8`, Android 앱은 Android의 `android.jar`를
+boot classpath로 지정해 Java 8 바이트코드로 컴파일한 뒤 D8로 변환한다.
+호스트 JDK의 최신 Java API를 Android API로 잘못 사용하는 일을 방지한다.
+
+```powershell
+cd android\BeanFocus
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+$env:ANDROID_JAR = "$env:LOCALAPPDATA\Android\Sdk\platforms\android-35\android.jar"
+$env:BUILD_TOOLS = "$env:LOCALAPPDATA\Android\Sdk\build-tools\35.0.0"
+.\tests\run-tests.ps1
+.\build.ps1
+```
+
+각 경로는 `-JdkHome`, `-AndroidJar`, `-BuildTools` 매개변수로도 전달할 수 있다.
+현재 Windows 검증에는 설치되어 있던 JDK 25.0.2, API 37.0 `android.jar`,
+Build Tools 36.0.0을 사용했다. `minSdkVersion=26`, `targetSdkVersion=35`는
+Manifest 값 그대로이며, 다른 도구 버전으로 만든 APK와의 바이트 일치는 보장하지 않는다.
+API 37을 쓰려면 위 `ANDROID_JAR` 경로를 `platforms\android-37.0\android.jar`로 바꾼다.
+
+기본 결과는 **서명 없는** `build/windows/aligned.apk`다. 컴파일·DEX 생성·리소스
+패키징·ZIP 정렬을 확인한 결과이며 설치나 실기기 차단 검증을 뜻하지 않는다.
+이전 결과를 재사용하지 않도록 매 실행의 중간 파일을 별도의 `build/windows/run-*`,
+`build/windows-tests/run-*` 폴더에 남긴다. 스크립트는 재귀 삭제를 실행하지 않는다.
+
+동일한 기존 서명키가 저장소 밖에 있고 위 서명 절의 `SIGNING_*` 환경변수 네 개를
+모두 설정한 경우에만 `.\build.ps1 -Sign`으로 서명한다. 새 키를 생성하지 않으며
+암호를 명령 인수에 직접 넣지 않는다. 결과 이름은 Manifest의 버전을 읽어
+`build/windows/BeanFocus-<versionName>.apk`로 정한다. 기본 빌드와 테스트에는 키가 필요 없다.

@@ -1,0 +1,54 @@
+name: Validate BeanFocus source
+
+on:
+  push:
+    paths:
+      - 'android/BeanFocus/**'
+      - '.github/workflows/validate.yml'
+  pull_request:
+    paths:
+      - 'android/BeanFocus/**'
+      - '.github/workflows/validate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: android/BeanFocus
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare Android SDK and checksum-verified compiler
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          compiler="$RUNNER_TEMP/ecj-3.37.0.jar"
+          curl --fail --location --retry 3 --connect-timeout 10 --max-time 120 \
+            --proto '=https' --tlsv1.2 \
+            --output "$compiler" \
+            'https://repo.maven.apache.org/maven2/org/eclipse/jdt/ecj/3.37.0/ecj-3.37.0.jar'
+          printf 'cde026ff966b48b5e5f148b6f041ceff3cf4f85cf75155f4ec0f40e4ee14b545  %s\n' "$compiler" | sha256sum --check --strict
+          {
+            printf 'ANDROID_JAR=%s/platforms/android-35/android.jar\n' "$ANDROID_HOME"
+            printf 'BUILD_TOOLS=%s/build-tools/35.0.0\n' "$ANDROID_HOME"
+            printf 'ECJ_JAR=%s\n' "$compiler"
+          } >> "$GITHUB_ENV"
+      - name: Run Java and JavaScript regression tests
+        run: bash tests/run-tests.sh
+      - name: Audit browser blocking and service integration
+        run: python3 tests/audit_014.py
+      - name: Compile and package unsigned APK
+        env:
+          UNSIGNED_ONLY: '1'
+        run: bash build.sh

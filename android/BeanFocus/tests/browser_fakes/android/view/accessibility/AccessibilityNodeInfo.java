@@ -3,8 +3,10 @@ import android.os.Bundle;
 import java.util.*;
 /** Small shared-data / owned-handle fake; detects leaked and recycled node handles. */
 public class AccessibilityNodeInfo {
- private static final class Data {String pkg="com.google.android.youtube";String id,text,description,cls="android.view.View";boolean visible=true,editable,focused,clickable;int left,top,right,bottom;Bundle extras=new Bundle();Data parent;List<Data> children=new ArrayList<>();}
- private final Data data;private boolean recycled;public static int handles,queries;
+ private static final class Data {String pkg="com.google.android.youtube";String id,text,description,cls="android.view.View";boolean visible=true,editable,focused,clickable;int left,top,right,bottom,childReads;Bundle extras=new Bundle();Data parent;List<Data> children=new ArrayList<>();}
+ private final Data data;private boolean recycled;public static int handles,queries,childReads,queryNodes;
+ public static void resetCounts(){queries=0;childReads=0;queryNodes=0;}
+ public int childReads(){check();return data.childReads;}
  public AccessibilityNodeInfo(){data=new Data();handles++;}private AccessibilityNodeInfo(Data d){data=d;handles++;}
  private void check(){if(recycled)throw new IllegalStateException("recycled node used");}
  public static AccessibilityNodeInfo obtain(AccessibilityNodeInfo n){n.check();return new AccessibilityNodeInfo(n.data);}
@@ -21,7 +23,7 @@ public class AccessibilityNodeInfo {
  public boolean isClickable(){check();return data.clickable;}
  public void getBoundsInScreen(android.graphics.Rect r){check();r.left=data.left;r.top=data.top;r.right=data.right;r.bottom=data.bottom;}
  public boolean isVisibleToUser(){check();return data.visible;}public boolean isEditable(){check();return data.editable;}public boolean isFocused(){check();return data.focused;}
- public int getChildCount(){check();return data.children.size();}public AccessibilityNodeInfo getChild(int i){check();return new AccessibilityNodeInfo(data.children.get(i));}public AccessibilityNodeInfo getParent(){check();return data.parent==null?null:new AccessibilityNodeInfo(data.parent);}
+ public int getChildCount(){check();return data.children.size();}public AccessibilityNodeInfo getChild(int i){check();childReads++;data.childReads++;return new AccessibilityNodeInfo(data.children.get(i));}public AccessibilityNodeInfo getParent(){check();return data.parent==null?null:new AccessibilityNodeInfo(data.parent);}
  public List<AccessibilityNodeInfo> findAccessibilityNodeInfosByViewId(String id){check();queries++;List<AccessibilityNodeInfo> out=new ArrayList<>();find(data,id,out);return out;}
- private static void find(Data d,String id,List<AccessibilityNodeInfo> out){if(id.equals(d.id))out.add(new AccessibilityNodeInfo(d));for(Data c:d.children)find(c,id,out);}
+ private static void find(Data d,String id,List<AccessibilityNodeInfo> out){queryNodes++;if(id.equals(d.id))out.add(new AccessibilityNodeInfo(d));for(Data c:d.children)find(c,id,out);}
 }

@@ -13,7 +13,7 @@ public class BrowserInspectorTest {
   // Hidden toolbar and page nodes must not cause a block from stale text.
   root=node();bar=node().id(id).text("youtube.com/shorts/hidden").visible(false);root.child(bar);ok(!UrlRules.isShorts(BrowserInspector.read(root,pkg).url));bar.recycle();root.recycle();
   // Native toolbar beyond the fallback's 180-node budget is still found by ID lookup.
-  root=node();for(int i=0;i<400;i++){AccessibilityNodeInfo n=node();root.child(n);n.recycle();}bar=node().id(id).text("youtube.com/shorts/deep");root.child(bar);bar.recycle();ok(UrlRules.isShorts(BrowserInspector.read(root,pkg).url));root.recycle();
+  root=node();for(int i=0;i<400;i++){AccessibilityNodeInfo n=node();root.child(n);n.recycle();}bar=node().id(id).text("youtube.com/shorts/deep");root.child(bar);bar.recycle();int queriesBefore=AccessibilityNodeInfo.queries,readsBefore=AccessibilityNodeInfo.childReads;r=BrowserInspector.read(root,pkg);ok(UrlRules.isShorts(r.url));ok(r.nativeTruncated);ok(r.nativeNodes==180);ok(AccessibilityNodeInfo.queries-queriesBefore==BrowserAddress.fieldsFor(pkg).length);ok(AccessibilityNodeInfo.childReads-readsBefore==179);root.recycle();
   // Domain-only toolbar must not hide an explicit document-root home URL.
   root=node();bar=node().id(id).text("m.youtube.com");AccessibilityNodeInfo home=node().cls("android.webkit.WebView");home.getExtras().putCharSequence("url","https://m.youtube.com/");root.child(bar);root.child(home);
   r=BrowserInspector.read(root,pkg);ok(r.confirmedHome());ok(r.knownLocation());ok(r.diagnostic().contains("유튜브 홈 확인"));ok(!BlockPolicy.homeAfterBack(r.url,true,false,r.confirmedHome()));bar.text("youtube.com/shorts/stale");home.getExtras().putCharSequence("url","https://m.youtube.com/?app=m");r=BrowserInspector.read(root,pkg);ok(r.confirmedHome());ok(!UrlRules.isShorts(r.url));bar.recycle();home.recycle();root.recycle();
@@ -23,8 +23,38 @@ public class BrowserInspectorTest {
   ok(!UrlRules.isShorts(BrowserInspector.read(root,pkg).url));ok(BrowserInspector.clickedShorts(image,false));
   link.getExtras().putCharSequence(BrowserInspector.TARGET,"https://youtube.com.evil.example/shorts/fake");ok(!BrowserInspector.clickedShorts(image,false));
   link.id("shorts-tab");ok(!BrowserInspector.clickedShorts(image,false));ok(BrowserInspector.clickedShorts(image,true));
+  link.id(pkg+":id/shorts-tab");ok(!BrowserInspector.clickedShorts(image,true));
   web.getExtras().putCharSequence("url","");ok(!BrowserInspector.read(root,pkg).youtube());
   root.recycle();web.recycle();link.recycle();image.recycle();
+  // Samsung/Chromium native WebView wrapper -> virtual document root: no page scan
+  // is necessary to recover the path, and sibling toolbar order cannot win.
+  root=node();web=node().cls("android.webkit.WebView");AccessibilityNodeInfo document=node();
+  document.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");
+  document.getExtras().putCharSequence("url","https://m.youtube.com/watch?v=lecture");
+  AccessibilityNodeInfo iframe=node();iframe.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");iframe.getExtras().putCharSequence("url","https://m.youtube.com/shorts/embedded");document.child(iframe);web.child(document);root.child(web);
+  bar=node().id(id).text("youtube.com/shorts/stale");root.child(bar);
+  queriesBefore=AccessibilityNodeInfo.queries;r=BrowserInspector.read(root,pkg,false);
+  ok(r.knownLocation());ok(!r.shorts());ok(r.url.contains("/watch"));ok(r.source.equals("웹 문서 루트"));ok(!r.playerChecked);ok(AccessibilityNodeInfo.queries==queriesBefore);ok(document.childReads()==0);
+  document.getExtras().putCharSequence("url","https://m.youtube.com/shorts/current");bar.text("m.youtube.com");r=BrowserInspector.read(root,pkg,false);ok(r.shorts());ok(r.documentNodes==2);ok(!r.playerChecked);
+  // A focused editor still suppresses enforcement even when the document was first.
+  bar.text("youtube.com/watch?v=typing").editing();r=BrowserInspector.read(root,pkg);ok(r.editing);ok(!BlockPolicy.webShorts(r.url,r.editing));ok(!r.playerChecked);
+  root.recycle();web.recycle();document.recycle();iframe.recycle();bar.recycle();
+  // An ordinary top-level document cannot be overridden by a Shorts iframe.
+  root=node();web=node().cls("android.webkit.WebView");web.getExtras().putCharSequence("url","https://example.org/");document=node();document.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");document.getExtras().putCharSequence("url","https://youtube.com/shorts/iframe");web.child(document);root.child(web);bar=node().id(id).text("youtube.com/shorts/stale");root.child(bar);
+  r=BrowserInspector.read(root,pkg);ok(!r.youtube());ok(!r.shorts());ok(web.childReads()==0);root.recycle();web.recycle();document.recycle();bar.recycle();
+  // Link metadata inside an unlabelled page container is never document metadata.
+  root=node();web=node().cls("android.webkit.WebView");link=node();iframe=node();iframe.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");iframe.getExtras().putCharSequence("url","https://youtube.com/shorts/iframe");link.child(iframe);web.child(link);root.child(web);bar=node().id(id).text("m.youtube.com");root.child(bar);
+  r=BrowserInspector.read(root,pkg,false);ok(!r.knownLocation());ok(!r.shorts());ok(link.childReads()==0);root.recycle();web.recycle();link.recycle();iframe.recycle();bar.recycle();
+  // The reported Samsung domain-only/web-zero case stays unknown and never starts
+  // the 600-node player fallback. Repeated reads add no redundant ID queries.
+  root=node();bar=node().id(id).text("m.youtube.com");root.child(bar);queriesBefore=AccessibilityNodeInfo.queries;
+  for(int i=0;i<5;i++){r=BrowserInspector.read(root,pkg,true);ok(r.youtube());ok(!r.knownLocation());ok(!r.playerChecked);ok(r.playerNodes==0);ok(r.nativeNodes==2);}
+  ok(AccessibilityNodeInfo.queries==queriesBefore);root.recycle();bar.recycle();
+  // A stable Chrome URL reads the chrome once and never enters its document body.
+  root=node();bar=node().id("com.android.chrome:id/url_bar").text("youtube.com/watch?v=lesson");root.child(bar);web=node().cls("android.webkit.WebView");web.getExtras().putCharSequence("url","https://youtube.com/watch?v=lesson");
+  for(int i=0;i<800;i++){link=node();web.child(link);link.recycle();}root.child(web);queriesBefore=AccessibilityNodeInfo.queries;readsBefore=AccessibilityNodeInfo.childReads;r=BrowserInspector.read(root,"com.android.chrome",true);
+  ok(!r.shorts());ok(!r.playerChecked);ok(r.nativeNodes==3);ok(AccessibilityNodeInfo.queries==queriesBefore);ok(AccessibilityNodeInfo.childReads-readsBefore==2);ok(web.childReads()==0);root.recycle();bar.recycle();web.recycle();
+  ok(BrowserInspector.read(null,pkg).url.isEmpty());
   ok(AccessibilityNodeInfo.handles==0);ok(AccessibilityNodeInfo.queries>0);
   System.out.println("Browser inspector: "+checks+" checks passed (Android node fakes)");
  }

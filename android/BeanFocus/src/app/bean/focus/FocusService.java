@@ -14,7 +14,16 @@ public class FocusService extends AccessibilityService {
  private static FocusService current;
  private final Handler handler=new Handler(Looper.getMainLooper());
  private GrowthTracker growth;private TelemetrySession webSession;private AppCatalog catalog;private GameShield shield;
- private long beat,lastScan,lastGame=-2000,lastAction=-2000,reportAt;private int checks,events,blocks,errors,clickToken;
+ private long beat,lastGame=-2000,lastAction=-2000,reportAt;private int checks,events,blocks,errors,clickToken;
+ private final BrowserScanPolicy browserBudget=new BrowserScanPolicy();
+ private String pendingBrowser="";private int pendingBrowserWindow=-1;
+ private int browserScans,playerScans;private long lastBrowserMs,maxBrowserMs,totalBrowserMs;
+ private final Runnable browserCheck=()->safe("브라우저 변경 점검",()->{
+  String p=pendingBrowser;int window=pendingBrowserWindow;pendingBrowser="";pendingBrowserWindow=-1;
+  if(p.isEmpty()||!Prefs.shorts(this)||!awake())return;
+  AccessibilityNodeInfo root=activeRoot(p,window);if(root==null)return;
+  try{if(browserBudget.delay(SystemClock.elapsedRealtime(),p,root.getWindowId())>0){queueBrowserScan(p,root.getWindowId());return;}captureIds(root,p);inspect(root,p,false);}finally{root.recycle();}
+ });
  private String browserState="아직 브라우저를 확인하지 못했어요",errorState="",youtubeState="",lastGamePackage="";
  private boolean receiverRegistered;
  private HandlerThread recordThread;private Handler recordHandler;
@@ -37,13 +46,13 @@ public class FocusService extends AccessibilityService {
  static String diagnostics(Context c){
   if(current==null){String enabled=android.provider.Settings.Secure.getString(c.getContentResolver(),android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);boolean allowed=enabled!=null&&enabled.contains(c.getPackageName()+"/");return allowed?"접근성 설정은 켜짐 · 서비스 연결은 확인 안 됨. 접근성을 껐다 켜주세요.":"접근성 설정에서 집중콩을 켜주세요.";}
   FocusService s=current;long age=Math.max(0,(SystemClock.elapsedRealtime()-s.beat)/1000);
-  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n"+s.youtubeState+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
+  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
  }
  private int newPackageCount(){android.content.SharedPreferences p=Prefs.get(this);String id=p.getString("lock_id","");return FocusLock.active(this)&&!id.isEmpty()&&id.equals(p.getString("lock_new_pkgs_id",""))?p.getStringSet("lock_new_pkgs",Collections.emptySet()).size():0;}
  private void safe(String phase,Runnable work){try{work.run();}catch(RuntimeException e){String failure=phase+" · "+e.getClass().getSimpleName();if(Looper.myLooper()==Looper.getMainLooper()){errors++;errorState=failure;}else handler.post(()->{errors++;errorState=failure;});}}
  private final Runnable webBeat=new Runnable(){public void run(){try{safe("화면 점검",()->sampleExternal());}finally{if(current==FocusService.this)handler.postDelayed(this,2000);}}};
  private final Runnable growthBeat=new Runnable(){public void run(){try{safe("성장 관측",()->growthTick());}finally{if(current==FocusService.this)handler.postDelayed(this,30000);}}};
- static void reload(){if(current!=null){FocusService s=current;s.safe("설정 반영",()->s.configure());s.clickToken++;s.recentClose.cancel();if(s.shield!=null)s.safe("가림 해제",()->s.shield.hide());if(s.growth!=null)s.safe("성장 관측",()->s.growthTick());s.handler.post(()->s.safe("설정 후 점검",()->s.sampleExternal()));}}
+ static void reload(){if(current!=null){FocusService s=current;s.safe("설정 반영",()->s.configure());s.clickToken++;s.cancelBrowserScan();s.browserBudget.reset();s.recentClose.cancel();if(s.shield!=null)s.safe("가림 해제",()->s.shield.hide());if(s.growth!=null)s.safe("성장 관측",()->s.growthTick());s.handler.post(()->s.safe("설정 후 점검",()->s.sampleExternal()));}}
  @Override public void onServiceConnected(){safe("서비스 준비",()->connectService());}
  private void connectService(){
   current=this;ShortcutCheck.last=Prefs.get(this).getString("shortcut_last_result",ShortcutCheck.last);beat=SystemClock.elapsedRealtime();recordThread=new HandlerThread("BeanFocus-records");recordThread.start();recordHandler=new Handler(recordThread.getLooper());catalog=new AppCatalog(this);shield=new GameShield(this,()->{boolean[] result={false};safe("최근 앱 버튼",()->result[0]=requestRecentClose());return result[0];});
@@ -125,18 +134,32 @@ public class FocusService extends AccessibilityService {
   }
   if(!Prefs.shorts(this))return;
   if(event.getEventType()==AccessibilityEvent.TYPE_VIEW_CLICKED){
+   clickToken++; // A newer click invalidates any delayed action from an earlier link.
    AccessibilityNodeInfo node=event.getSource();if(node!=null)try{
     boolean candidate=catalog.browser(p)||AppCatalog.webHost(p)||UrlRules.isShorts(String.valueOf(node.getExtras().getCharSequence(BrowserInspector.TARGET)));
     if(!candidate)return;
-    boolean link=BrowserInspector.clickedShorts(node,false),context=false;
-    if(!link&&(catalog.browser(p)||AppCatalog.webHost(p))){AccessibilityNodeInfo root=activeRoot(p,event.getWindowId());
-     if(root!=null)try{context=BrowserInspector.read(root,p).youtube();}finally{root.recycle();}}
-    if(link||BrowserInspector.clickedShorts(node,context)){queueClickedShorts(p,event.getWindowId());return;}
+    boolean link=BrowserInspector.clickedShorts(node,false);
+    // A tab ID is only a hint here. The delayed check must establish the current YouTube page.
+    if(link||BrowserInspector.clickedShorts(node,true)){queueClickedShorts(p,event.getWindowId());return;}
    }finally{node.recycle();}
   }
   if(!(catalog.browser(p)||AppCatalog.webHost(p)))return;
-  long now=SystemClock.elapsedRealtime();if(now-lastScan<250)return;lastScan=now;
-  AccessibilityNodeInfo root=activeRoot(p,-1);if(root!=null)try{captureIds(root,p);inspect(root,p,false);}finally{root.recycle();}
+  queueBrowserScan(p,event.getWindowId());
+ }
+ private void cancelBrowserScan(){handler.removeCallbacks(browserCheck);pendingBrowser="";pendingBrowserWindow=-1;}
+ private void queueBrowserScan(String p,int window){
+  if(p.equals(pendingBrowser)&&window==pendingBrowserWindow)return; // Never postpone forever during scrolling.
+  cancelBrowserScan();pendingBrowser=p;pendingBrowserWindow=window;
+  long delay=browserBudget.delay(SystemClock.elapsedRealtime(),p,window);
+  handler.postDelayed(browserCheck,Math.max(120,delay));
+ }
+ private BrowserInspector.Result readBrowser(AccessibilityNodeInfo root,String p,boolean confirmAction){
+  long started=SystemClock.elapsedRealtime();browserBudget.scanned(started,p,root.getWindowId());
+  try{
+   BrowserInspector.Result r=BrowserInspector.read(root,p,confirmAction||browserBudget.allowPlayer(started));
+   if(r.playerChecked){playerScans++;browserBudget.playerScanned(SystemClock.elapsedRealtime());}
+   return r;
+  }finally{lastBrowserMs=SystemClock.elapsedRealtime()-started;totalBrowserMs+=lastBrowserMs;maxBrowserMs=Math.max(maxBrowserMs,lastBrowserMs);browserScans++;}
  }
  private String packageOf(AccessibilityNodeInfo n){return n.getPackageName()==null?"":n.getPackageName().toString();}
  private AccessibilityNodeInfo activeRoot(String expected,int window){
@@ -148,49 +171,55 @@ public class FocusService extends AccessibilityService {
   }}finally{for(AccessibilityWindowInfo w:windows)w.recycle();}return null;
  }
  private void inspect(AccessibilityNodeInfo root,String p,boolean telemetry){
-  BrowserInspector.Result result=BrowserInspector.read(root,p);browserState=p+"\n"+result.diagnostic();
+  if(!Prefs.shorts(this)){if(telemetry)sampleWeb(null);return;}
+  if(browserBudget.delay(SystemClock.elapsedRealtime(),p,root.getWindowId())>0)return;
+  cancelBrowserScan();BrowserInspector.Result result=readBrowser(root,p,false);browserState=p+"\n"+result.diagnostic();
   if(Prefs.shorts(this)&&!result.editing){
-   if(result.shorts())backFromShorts(p,root.getWindowId());
+   if(BlockPolicy.browserShorts(result.url,result.editing,result.playerShorts,result.confirmedHome()))backFromShorts(p,root.getWindowId());
    else if(BlockPolicy.unknownBrowser(true,FocusLock.active(this),strict(),catalog.browser(p),Prefs.browser(p),AppCatalog.webHost(p)))restrict(p,"잠금 중 미지원 브라우저 · 내장 웹 화면을 사용하세요");
 
   }
-  if(telemetry){String kind=result.youtube()&&(result.knownLocation()||result.playerShorts)?(result.shorts()?"shorts":"unknown"):null;sampleWeb(kind);}
+  // Event scans also sample the coarse classification. Otherwise a busy event stream
+  // can win every shared budget slot and starve the two-second telemetry watchdog.
+  String kind=result.youtube()&&!result.editing&&(result.knownLocation()||result.playerShorts)?(result.shorts()?"shorts":"unknown"):null;sampleWeb(kind);
  }
  boolean userGlobalAction(int action){boolean[] result={false};safe("사용자 이동 버튼",()->{result[0]=performGlobalAction(action);if(result[0])blocks++;});return result[0];}
- private boolean globalActionFor(int action,String expectedPkg){
+ private boolean globalActionFor(int action,String expectedPkg,int expectedWindow){
   AccessibilityNodeInfo front=getRootInActiveWindow();if(front==null){globalState="활성 창 확인 불가 · 자동 이동 생략";return false;}
-  try{String active=packageOf(front);if(!WindowPolicy.globalAllowed(active,expectedPkg)){globalState="대상/활성 창 불일치 또는 보호 화면 · 자동 이동 생략";return false;}}finally{front.recycle();}
-  AccessibilityNodeInfo expected=activeRoot(expectedPkg,-1);if(expected==null)return false;try{
+  try{String active=packageOf(front);if(!WindowPolicy.globalAllowed(active,expectedPkg)||(expectedWindow>=0&&front.getWindowId()!=expectedWindow)){globalState="대상/활성 창 불일치 또는 보호 화면 · 자동 이동 생략";return false;}}finally{front.recycle();}
+  AccessibilityNodeInfo expected=activeRoot(expectedPkg,expectedWindow);if(expected==null)return false;try{
    List<AccessibilityWindowInfo> windows=getWindows();try{for(AccessibilityWindowInfo w:windows)if(w.getId()==expected.getWindowId()&&w.isInPictureInPictureMode()){globalState="PiP · 자동 HOME/BACK 생략";return false;}}finally{for(AccessibilityWindowInfo w:windows)w.recycle();}
   }finally{expected.recycle();}
-  AccessibilityNodeInfo latest=getRootInActiveWindow();if(latest==null)return false;try{if(!WindowPolicy.globalAllowed(packageOf(latest),expectedPkg))return false;}finally{latest.recycle();}
+  AccessibilityNodeInfo latest=getRootInActiveWindow();if(latest==null)return false;try{if(!WindowPolicy.globalAllowed(packageOf(latest),expectedPkg)||(expectedWindow>=0&&latest.getWindowId()!=expectedWindow))return false;}finally{latest.recycle();}
   boolean delivered=performGlobalAction(action);if(delivered)blocks++;globalState=expectedPkg+" · "+(action==GLOBAL_ACTION_HOME?"HOME":"BACK")+" 요청 "+(delivered?"전달":"실패");return delivered;
  }
+ private boolean globalActionFor(int action,String expectedPkg){return globalActionFor(action,expectedPkg,-1);}
  private void record(String kind,String p){long wall=System.currentTimeMillis();writeRecord("차단 기록",()->AnalyticsDb.get(this).blockAt(kind,p,wall));}
  private void blockApp(String p){long now=SystemClock.elapsedRealtime();if(YouTubeInspector.isPackage(p)&&FocusLock.active(this)&&now-lastYoutubeToast>=10000){lastYoutubeToast=now;Toast.makeText(this,DeviceConstants.YT_NOTICE,Toast.LENGTH_SHORT).show();}if(recentClose.suppressHome(now,p))return;if(p.equals(lastGamePackage)&&now-lastGame<1000)return;lastGame=now;lastGamePackage=p;boolean delivered=globalActionFor(GLOBAL_ACTION_HOME,p);browserState="차단 앱 감지 · 홈 이동 요청 "+(delivered?"전달됨":"실패");record(YouTubeInspector.isPackage(p)?"youtube_app":"game",p);handler.postDelayed(()->safe("게임 창 점검",()->checkBlockedWindows()),300);}
  private void restrict(String p,String reason){long now=SystemClock.elapsedRealtime();if(now-lastAction<1200)return;lastAction=now;boolean delivered=globalActionFor(GLOBAL_ACTION_HOME,p);browserState=reason+" · 홈 요청 "+(delivered?"전달됨":"실패");Toast.makeText(this,"집중콩 · "+reason,Toast.LENGTH_SHORT).show();}
  private void backFromShorts(String p,int window){
-  long now=SystemClock.elapsedRealtime();if(now-lastAction<1100)return;lastAction=now;boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p);browserState+="\n쇼츠 감지 · 뒤로 요청 "+(delivered?"전달됨":"실패");record("shorts",p);
-  handler.postDelayed(()->safe("쇼츠 이동 확인",()->verifyExit(p,window,false)),850);
+  long now=SystemClock.elapsedRealtime();if(now-lastAction<1100)return;lastAction=now;boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p,window);browserState+="\n쇼츠 감지 · 뒤로 요청 "+(delivered?"전달됨":"실패");record("shorts",p);
+  final int token=clickToken;
+  handler.postDelayed(()->safe("쇼츠 이동 확인",()->{if(token==clickToken)verifyExit(p,window,false);}),850);
  }
  private void queueClickedShorts(String p,int window){
   final int token=++clickToken;browserState=p+" · 클릭한 쇼츠 링크 감지 · 이동 대기";
   handler.postDelayed(()->safe("쇼츠 클릭 차단",()->{
    if(token!=clickToken||!Prefs.shorts(this)||!awake())return;
    AccessibilityNodeInfo root=activeRoot(p,window);if(root==null)return;
-   try{BrowserInspector.Result r=BrowserInspector.read(root,p);if(r.editing)return;
-    if(r.knownLocation()&&!UrlRules.isShorts(r.url))return;
+   try{BrowserInspector.Result r=readBrowser(root,p,false);browserState=p+"\n"+r.diagnostic();
+    if(!BlockPolicy.browserShorts(r.url,r.editing,r.playerShorts,r.confirmedHome()))return;
     if(SystemClock.elapsedRealtime()-lastAction<1100)return;lastAction=SystemClock.elapsedRealtime();
-    boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p);browserState=p+" · 쇼츠 클릭 감지 · 뒤로 요청 "+(delivered?"전달됨":"실패");record("shorts",p);
+    boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p,window);browserState=p+" · 현재 쇼츠 확인 · 뒤로 요청 "+(delivered?"전달됨":"실패");record("shorts",p);
     handler.postDelayed(()->safe("쇼츠 클릭 이동 확인",()->{if(token==clickToken)verifyExit(p,window,true);}),850);
    }finally{root.recycle();}
   }),450);
  }
  private void verifyExit(String p,int window,boolean clicked){
   if(!Prefs.shorts(this)||!awake())return;AccessibilityNodeInfo root=activeRoot(p,window);if(root==null)return;
-  try{BrowserInspector.Result r=BrowserInspector.read(root,p);if(r.editing)return;
-   boolean remains=r.playerShorts||BlockPolicy.homeAfterBack(r.url,clicked,r.editing,r.confirmedHome());
-   if(remains){lastAction=SystemClock.elapsedRealtime();boolean delivered=globalActionFor(GLOBAL_ACTION_HOME,p);browserState=p+" · 쇼츠 주소/화면 신호가 남음 · 홈 요청 "+(delivered?"전달됨":"실패");}
+  try{BrowserInspector.Result r=readBrowser(root,p,true);if(r.editing)return;
+   boolean remains=BlockPolicy.browserShorts(r.url,r.editing,r.playerShorts,r.confirmedHome());
+   if(remains){lastAction=SystemClock.elapsedRealtime();boolean delivered=globalActionFor(GLOBAL_ACTION_HOME,p,window);browserState=p+" · 쇼츠 주소/화면 신호가 남음 · 홈 요청 "+(delivered?"전달됨":"실패");}
    else browserState=p+"\n"+r.diagnostic();
   }finally{root.recycle();}
  }
@@ -234,7 +263,7 @@ public class FocusService extends AccessibilityService {
   if(!activeBlockedPkg.isEmpty())blockApp(activeBlockedPkg);
  }
 
- @Override public void onInterrupt(){stopWeb();if(shield!=null)safe("가림 해제",()->shield.hide());}
+ @Override public void onInterrupt(){clickToken++;cancelBrowserScan();browserBudget.reset();stopWeb();if(shield!=null)safe("가림 해제",()->shield.hide());}
  private void cleanup(){recentClose.cancel();shieldOwners.clear();dump="";dumpPackage="";dumpExpires=0;dumpUntil=0;handler.removeCallbacksAndMessages(null);clickToken++;if(shield!=null)safe("가림 해제",()->shield.hide());GrowthTracker oldGrowth=growth;TelemetrySession oldSession=webSession;writeRecord("관측 정리",()->{if(oldGrowth!=null)oldGrowth.stop();if(oldSession!=null)oldSession.stop();});if(recordThread!=null){recordThread.quitSafely();recordThread=null;recordHandler=null;}if(receiverRegistered){safe("앱 감지 해제",()->unregisterReceiver(packageReceiver));receiverRegistered=false;}if(current==this)current=null;}
  @Override public boolean onUnbind(Intent i){cleanup();return super.onUnbind(i);}
  @Override public void onDestroy(){cleanup();super.onDestroy();}

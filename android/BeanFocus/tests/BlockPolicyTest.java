@@ -9,6 +9,14 @@ public class BlockPolicyTest {
   ok(BlockPolicy.homeAfterBack("youtube.com/shorts/x",false,false));ok(!BlockPolicy.homeAfterBack("youtube.com",false,false));ok(!BlockPolicy.homeAfterBack("",true,false));ok(!BlockPolicy.homeAfterBack("",false,false));ok(!BlockPolicy.homeAfterBack("example.com",true,false));ok(!BlockPolicy.homeAfterBack("youtube.com/watch?v=x",true,false));ok(!BlockPolicy.homeAfterBack("youtube.com/shorts/x",true,true));
   ok(!BlockPolicy.homeAfterBack("https://youtube.com/",true,false,true));ok(!BlockPolicy.homeAfterBack("youtube.com",true,false,false));ok(!BlockPolicy.unknownBrowser(true,true,true,true,false,true));ok(BlockPolicy.unknownBrowser(true,true,true,true,false,false));
   ok(BlockPolicy.newApp(true,true,true,true,false,false,false));ok(!BlockPolicy.newApp(true,true,false,true,false,false,false));ok(!BlockPolicy.newApp(true,true,true,false,false,false,false));ok(!BlockPolicy.newApp(true,true,true,true,true,false,false));ok(!BlockPolicy.newApp(true,true,true,true,false,true,false));ok(!BlockPolicy.newApp(true,true,true,true,false,false,true));ok(!BlockPolicy.newApp(true,false,true,true,false,false,false));ok(!BlockPolicy.newApp(false,true,true,true,false,false,false));
+  ok(BlockPolicy.browserShorts("youtube.com/shorts/current",false,false,false));
+  ok(!BlockPolicy.browserShorts("youtube.com",false,false,false));
+  ok(!BlockPolicy.browserShorts("youtube.com/watch?v=lesson",false,false,false));
+  ok(!BlockPolicy.browserShorts("",false,false,false));
+  ok(!BlockPolicy.browserShorts("youtube.com/shorts/draft",true,false,false));
+  ok(BlockPolicy.browserShorts("youtube.com",false,true,false));
+  ok(!BlockPolicy.browserShorts("youtube.com",true,true,false));
+  ok(!BlockPolicy.browserShorts("youtube.com/shorts/stale",false,true,true));
   System.out.println("Block policy: "+n+" checks passed");
  }
 }

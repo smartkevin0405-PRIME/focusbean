@@ -5,6 +5,8 @@ final class BlockPolicy {
  static boolean unknownBrowser(boolean shorts,boolean locked,boolean strict,boolean browser,boolean supported,boolean embeddedHost){return !embeddedHost&&unknownBrowser(shorts,locked,strict,browser,supported);}
  static boolean unknownBrowser(boolean shorts,boolean locked,boolean strict,boolean browser,boolean supported){return shorts&&locked&&strict&&browser&&!supported;}
  static boolean webShorts(String url,boolean editing){return !editing&&UrlRules.isShorts(url);}
+ // A click or a shortened YouTube host alone never proves what is currently open.
+ static boolean browserShorts(String url,boolean editing,boolean playerShorts,boolean confirmedHome){return !editing&&!confirmedHome&&(UrlRules.isShorts(url)||playerShorts);}
 
  static boolean homeAfterBack(String url,boolean clicked,boolean editing,boolean confirmedHome){return !confirmedHome&&homeAfterBack(url,clicked,editing);}
  static boolean homeAfterBack(String url,boolean clicked,boolean editing){
