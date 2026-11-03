@@ -6,7 +6,7 @@
 
 0.14 소스는 문서 URL 수집, 검사 합치기 및 추측에 의한 뒤로 이동을 수정한다.
 현재 변경과 검증 결과는 [REPORT-0.14.md](REPORT-0.14.md), 빌드는 [BUILDING.md](BUILDING.md)를 따른다.
-GitHub 최신 배포 APK는 아직 0.13이다. 0.14 서명/게시 및 실기기 확인은 별도다.
+GitHub 최신 배포 APK는 0.14다. 기존 인증서 서명·실제 다운로드 검증을 완료했으며 실기기 동작은 추가 확인이 필요하다.
 삼성 인터넷이 경로와 웹 노드를 모두 제공하지 않는 경우 쇼츠 구분은 여전히 불가능하다.
 
 ## 0.11 변경
@@ -28,7 +28,7 @@ GitHub 최신 배포 APK는 아직 0.13이다. 0.14 서명/게시 및 실기기 
 기존 앱과 앱 ID(`app.bean.focus`)와 서명키가 같아 설정과 성장 기록을 유지하며 업데이트할 수 있다.
 
 ```powershell
-.\adb.exe install -r "$env:USERPROFILE\Downloads\BeanFocus-0.13-beta.apk"
+.\adb.exe install -r "$env:USERPROFILE\Downloads\BeanFocus-latest.apk"
 ```
 
 폰에서 게임을 선택하고 Android 접근성 설정의 집중콩 서비스를 직접 켠다. 통계 화면의 `사용정보 권한`은 게임의 Android 앱 사용 기록을 가져올 때 필요하다. 이 권한은 설치나 ADB만으로 자동 허용되지 않는다. Family Link·기기 정책이 허용하지 않는 설정은 변경·우회하지 않는다.

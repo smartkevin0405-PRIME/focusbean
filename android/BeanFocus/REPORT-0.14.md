@@ -5,13 +5,14 @@
 ## 결론과 배포 상태
 
 원본 0.13 소스를 공개 저장소에 복구하고, 확인된 중복 탐색과 불확실한 자동 이동을 수정했다.
-현재 소스의 테스트와 서명 없는 APK 빌드는 통과했다. **삼성 실기기 차단 성공과 페이지 로딩 속도 개선은 미검증**이다.
-연결된 ADB 기기가 없었으며 기존 서명키도 이 작업 공간에 없다. `release/`는 변경하지 않았고,
-기존 최신 APK는 0.13이다. 아래의 소스 변경은 기존 설치에 자동 반영되지 않는다.
+현재 소스의 테스트와 APK 빌드가 통과했고, 기존 키를 보유한 이전 작업 공간에서 서명한 **0.14-beta를 게시했다**.
+다운로드한 APK의 패키지·버전·기존 인증서·SHA-256을 이 작업 공간에서 독립 검증했다.
+**삼성 실기기 차단 성공과 페이지 로딩 속도 개선은 미검증**이다. 연결된 ADB 기기는 없다.
+휴대폰의 앱 업데이트에서 0.14를 다운로드하고 Android 설치 확인을 거쳐야 변경이 반영된다.
 
 ## 확인한 증거
 
-- 현재 배포 0.13 APK SHA-256: `0142e774ebdb62acc17033fa6fdc154ea0d1ba24d8c4ed2dc823f35e23f40fed`.
+- 점검 기준인 이전 0.13 APK SHA-256: `0142e774ebdb62acc17033fa6fdc154ea0d1ba24d8c4ed2dc823f35e23f40fed`.
 - 이전 기기 진단: `com.sec.android.app.sbrowser:id/location_bar_edit_text`에서 YouTube 도메인만 확인,
   경로 미확인, 웹 노드 0, 오른쪽 동작 0. 이는 이번 실행에서 새로 측정한 값이 아니다.
 - 0.13의 `BrowserInspector.read`는 주소 ID별 직접 조회 후 최대 180개 UI 노드를 다시 탐색했다.
@@ -57,6 +58,23 @@
   확정된 문서 URL에서는 본문을 순회하지 않았다. 이것은 가상 노드 연산 수이며 실제 속도 측정이 아니다.
 - GitHub의 `Validate BeanFocus source`는 JDK 17/API 35/ECJ 3.37로 같은 테스트와 unsigned 빌드를 수행한다.
   실행 결과는 해당 커밋의 Actions에서 확인한다. 이 작업은 APK를 게시하지 않는다.
+
+## 배포 검증 (2026-11-03)
+
+- 빌드 소스: `3a521b7c248a2758d1a87eac527e3db2fbed9f12`.
+- 서명 작업에서 소스 102개 파일 일치, Java 20개·Node 4개 테스트, `audit_014.py`, APK v2/v3 서명과 정렬을 확인했다.
+- 스테이징: `bb7dffad5dee5c64aea94863e2101d21ad3c2071`. 변경은 `release/`의 APK와 메타데이터 두 파일뿐이다.
+- 게시 커밋: `0ff899aaefb7e3d822e57e97db4b2c8b9cc600a1`.
+- [게시 작업 성공](https://github.com/smartkevin0405-PRIME/focusbean/actions/runs/41616162536).
+- [0.14-beta 릴리스](https://github.com/smartkevin0405-PRIME/focusbean/releases/tag/v0.14-beta).
+- APK: `app.bean.focus`, versionCode 14, versionName `0.14-beta`, minSdk 26, targetSdk 35, 197,415 bytes.
+- APK SHA-256: `0c7aede754bbf5ddf0a2c8ba72eae86498410066ef28dd3206bb958f74c07d81`.
+- 인증서 SHA-256: `5e7325b0fbb0af5df2c80c300f0ac8d7e6e1ccd1d23bae0f8b6e2baec4b748f4` (0.13과 동일).
+- 고정 최신 주소와 버전별 주소에서 실제 다운로드한 두 APK의 해시가 위 값과 같으며 `SHA256SUMS`도 일치한다.
+- 다운로드 파일을 `apksigner verify --min-sdk-version 26 --verbose --print-certs`로 재검증했다.
+- `.github/scripts/verify_apk.py`가 실제 APK의 ID·버전·SDK·해시·기존 서명과 선언된 소스의 조상 관계/manifest를 검사한다.
+  이는 빌드 도구 차이까지 제거한 바이트 단위 재빌드 증명은 아니다. 키와 암호는 게시하지 않았다.
+- 배포 workflow는 main에서만 실행하며 검증 실패 시 릴리스를 게시하지 않는다.
 
 ## 남은 한계와 실기기 확인
 
