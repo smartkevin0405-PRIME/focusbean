@@ -32,7 +32,15 @@ jobs:
           java-version: '17'
       - name: Prepare Android SDK and checksum-verified compiler
         run: |
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          : "${ANDROID_HOME:?The runner must provide an Android SDK}"
+          if [[ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" || ! -x "$ANDROID_HOME/build-tools/35.0.0/aapt2" ]]; then
+            sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+            if [[ ! -x "$sdkmanager" ]]; then
+              sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -type f -name sdkmanager -print -quit)"
+            fi
+            test -x "$sdkmanager"
+            "$sdkmanager" --sdk_root="$ANDROID_HOME" 'platforms;android-35' 'build-tools;35.0.0'
+          fi
           compiler="$RUNNER_TEMP/ecj-3.37.0.jar"
           curl --fail --location --retry 3 --connect-timeout 10 --max-time 120 \
             --proto '=https' --tlsv1.2 \
@@ -52,3 +60,4 @@ jobs:
         env:
           UNSIGNED_ONLY: '1'
         run: bash build.sh
+
