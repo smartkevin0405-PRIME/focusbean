@@ -28,6 +28,20 @@ public class BrowserNavigationTest {
   return r;
  }
  private static boolean block(BrowserInspector.Result r){return BlockPolicy.browserShorts(r.url,r.editing,r.playerShorts,r.confirmedHome());}
+ // Chromium-shaped: no document "url" extra; Samsung Internet shows only the host and
+ // hides the toolbar while the page scrolls.
+ private static AccessibilityNodeInfo chromium(boolean toolbar,boolean player){
+  AccessibilityNodeInfo root=new AccessibilityNodeInfo().pkg(PKG);
+  add(root,new AccessibilityNodeInfo().id(PKG+":id/location_bar_edit_text").text("m.youtube.com").visible(toolbar));
+  AccessibilityNodeInfo web=new AccessibilityNodeInfo().cls("android.webkit.WebView").bounds(0,100,700,1400);web.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");
+  if(player){String[] labels={"좋아요","댓글","공유"};for(int i=0;i<3;i++)add(web,new AccessibilityNodeInfo().cls("android.widget.Button").description(labels[i]).bounds(590,800+i*140,690,890+i*140));add(web,new AccessibilityNodeInfo().text("구독").bounds(330,1130,470,1220));}
+  add(root,web);return root;
+ }
+ private static BrowserInspector.Result scanHost(BrowserScanPolicy policy,long now,int window,AccessibilityNodeInfo root){
+  ok(policy.delay(now,PKG,window)==0);policy.scanned(now,PKG,window);
+  BrowserInspector.Result r=BrowserInspector.read(root,PKG,policy.allowPlayer(now),policy.navigating(now),policy.host());
+  if(r.playerChecked)policy.playerScanned(now);policy.rememberHost(r.hostEvidence());root.recycle();return r;
+ }
  public static void main(String[] args){
   BrowserScanPolicy p=new BrowserScanPolicy();
   AccessibilityNodeInfo root=page("https://m.youtube.com",false,false);
@@ -56,6 +70,21 @@ public class BrowserNavigationTest {
   p.navigation(1000,PKG,1);p.scanned(1001,PKG,2);ok(!p.navigating(1001));
   ok(!BlockPolicy.sameWindow(PKG,1,PKG,2));ok(!BlockPolicy.sameWindow(PKG,1,"other.app",1));
   p.reset();ok(!p.navigating(1002));ok(AccessibilityNodeInfo.handles==0);
+  // Handoff item 2: a click event without a window ID keeps the burst for the real window,
+  // and the toolbar hidden on the Shorts page keeps this window's YouTube context.
+  BrowserScanPolicy q=new BrowserScanPolicy();
+  r=scanHost(q,0,4,chromium(true,false));ok(!block(r));ok(q.host()==1);
+  q.navigation(100,PKG,-1);ok(q.navigating(600));
+  r=scanHost(q,600,4,chromium(false,true));ok(q.navigating(600));ok(r.addressHidden());ok(r.playerChecked);ok(block(r));
+  // Handoff item 1: a briefly missing root during the burst is retried, not abandoned.
+  q.reset();r=scanHost(q,0,4,chromium(true,false));q.navigation(100,PKG,4);
+  long wait=q.missingRootDelay(450,PKG,4);ok(wait==150);r=scanHost(q,450+wait,4,chromium(false,true));ok(block(r));
+  ok(q.missingRootDelay(3200,PKG,4)==-1);
+  // A new window starts with an unknown host: hidden toolbar + layout alone never blocks.
+  r=scanHost(q,4000,5,chromium(false,true));ok(r.playerChecked);ok(!block(r));
+  // Normal page with hidden toolbar in a YouTube window stays allowed.
+  q.reset();scanHost(q,0,4,chromium(true,false));r=scanHost(q,6000,4,chromium(false,false));ok(r.playerChecked);ok(!block(r));
+  ok(AccessibilityNodeInfo.handles==0);
   System.out.println("Browser navigation timeline: "+checks+" checks passed (synthetic nodes/time, not a device test)");
  }
 }

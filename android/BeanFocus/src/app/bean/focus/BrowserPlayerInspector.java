@@ -7,8 +7,8 @@ import java.util.regex.Pattern;
 final class BrowserPlayerInspector {
  private static final int NODE_LIMIT=600;
  private static final Pattern OWNER=Pattern.compile("@[\\p{L}\\p{N}_.-]{1,100}");
- static final class Result {boolean shorts,strongShorts,truncated;int nodes,webNodes,controls;String diagnostic(){return "웹 플레이어: "+(strongShorts?"쇼츠 플레이어 ID·동작 확인":shorts?"쇼츠 버튼 배치 감지":"미확인")+" · 웹 노드 "+webNodes+" · 오른쪽 동작 "+controls;}}
- private static final class Frame {final Rect bounds=new Rect();boolean marker,owner,document;final List<WebShortsRules.Control> controls=new ArrayList<>();}
+ static final class Result {boolean shorts,strongShorts,truncated;int nodes,webNodes,controls,youtubeLinks,otherLinks;String diagnostic(){return "웹 플레이어: "+(strongShorts?"쇼츠 플레이어 ID·동작 확인":shorts?"쇼츠 버튼 배치 감지":"미확인")+" · 웹 노드 "+webNodes+" · 오른쪽 동작 "+controls;}}
+ private static final class Frame {final Rect bounds=new Rect();boolean marker,owner,document;int youtubeLinks,otherLinks;final List<WebShortsRules.Control> controls=new ArrayList<>();}
  private static final class Entry {final AccessibilityNodeInfo node;final Frame frame;Entry(AccessibilityNodeInfo n,Frame f){node=n;frame=f;}}
  static Result read(AccessibilityNodeInfo root){
   if(root==null)return new Result();
@@ -39,11 +39,15 @@ final class BrowserPlayerInspector {
     AccessibilityNodeInfo child=n.getChild(i);if(child!=null)q.add(new Entry(child,frame));
    }
   }finally{n.recycle();}}if(!q.isEmpty())result.truncated=true;}finally{while(!q.isEmpty())q.remove().node.recycle();}
-  for(Frame f:frames){result.controls+=f.controls.size();if(WebShortsRules.player(f.bounds.height()>f.bounds.width()*1.05f,f.marker,f.owner,f.controls)){result.shorts=true;if(f.marker)result.strongShorts=true;}}return result;
+  for(Frame f:frames){result.controls+=f.controls.size();result.youtubeLinks+=f.youtubeLinks;result.otherLinks+=f.otherLinks;if(WebShortsRules.player(f.bounds.height()>f.bounds.width()*1.05f,f.marker,f.owner,f.controls)){result.shorts=true;if(f.marker)result.strongShorts=true;}}return result;
  }
  private static void observe(AccessibilityNodeInfo n,Frame f){
   if(n.isEditable()||f.bounds.width()<=0||f.bounds.height()<=0)return;Rect b=new Rect();n.getBoundsInScreen(b);
   if(b.isEmpty()||b.right<=f.bounds.left||b.left>=f.bounds.right||b.bottom<=f.bounds.top||b.top>=f.bounds.bottom)return;
+  // Chromium does not attach the page address to accessibility nodes, but links and
+  // media carry absolute target URLs. Only on-screen host classes are counted.
+  int origin=WebShortsRules.origin(string(n.getExtras().getCharSequence(BrowserInspector.TARGET)));
+  if(origin>0&&f.youtubeLinks<100)f.youtubeLinks++;else if(origin<0&&f.otherLinks<100)f.otherLinks++;
   float x=(b.centerX()-f.bounds.left)/(float)f.bounds.width(),y=(b.centerY()-f.bounds.top)/(float)f.bounds.height();
   String id=n.getViewIdResourceName();if(DeviceConstants.WEB_PLAYER_IDS.contains(id)&&b.width()>=f.bounds.width()*.4f&&b.height()>=f.bounds.height()*.4f)f.marker=true;
   String text=string(n.getText()),description=string(n.getContentDescription());

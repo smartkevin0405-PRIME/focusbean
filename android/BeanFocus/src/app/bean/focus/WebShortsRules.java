@@ -13,6 +13,20 @@ final class WebShortsRules {
   if(!matches(s,DeviceConstants.WEB_DISLIKE_LABELS)&&matches(s,DeviceConstants.WEB_LIKE_LABELS))return LIKE;
   return 0;
  }
+ /** Host class of a link/media target: 1 YouTube, -1 another site, 0 not an address. */
+ static int origin(String target){
+  String s=target==null?"":target.trim();
+  if(s.regionMatches(true,0,"blob:",0,5))s=s.substring(5);
+  java.net.URI u=UrlRules.parse(s);
+  if(u==null||!s.matches("(?i)^https?://.*")||!u.getHost().contains("."))return 0;
+  return UrlRules.isYouTube(s)?1:-1;
+ }
+ /** Page evidence from on-screen links: 1 YouTube page, -1 another site, 0 unclear. */
+ static int page(int youtubeLinks,int otherLinks){
+  if(youtubeLinks>0&&youtubeLinks>=otherLinks*2)return 1;
+  if(otherLinks>=2&&otherLinks>youtubeLinks)return -1;
+  return 0;
+ }
  static boolean subscribe(String raw){return DeviceConstants.WEB_SUBSCRIBE_LABELS.contains(normalize(raw));}
  private static boolean matches(String s,String[] words){for(String w:words)if(w.matches("[a-z]+")?s.matches(".*\\b"+w+"s?\\b.*"):s.contains(w))return true;return false;}
  static String normalize(String s){return s==null?"":s.toLowerCase(Locale.ROOT).trim().replaceAll("\\s+"," ");}

@@ -46,7 +46,7 @@ bash tests/run-tests.sh
 python3 tests/audit_015.py
 ```
 
-기본 러너는 Java 테스트 21개와 Node 테스트 4개를 실행한다.
+기본 러너는 Java 테스트 23개와 Node 테스트 4개를 실행한다.
 `audit_010.py`~`audit_014.py`는 이전 버전 전용 기록이며 현재 검증에는 `audit_015.py`를 사용한다.
 Android 대역 테스트이므로 실제 One UI 접근성·PiP·보안 폴더 동작 검증을 대신하지 않는다.
 

@@ -44,6 +44,22 @@ public class BrowserScanPolicyTest {
   p.scanned(9001,"samsung",2);ok(!p.navigating(9001));ok(p.allowPlayer(9001));
   p.navigation(9100,"samsung",2);p.endNavigation();ok(!p.navigating(9100));
   p.navigation(9200,"samsung",2);p.reset();ok(!p.navigating(9200));
+  // An event without a window ID binds to the first real window and keeps its deadline.
+  p.reset();p.navigation(0,"samsung",-1);ok(p.navigating(0));ok(p.matches("samsung",7));
+  p.scanned(450,"samsung",7);ok(p.navigating(450));ok(p.matches("samsung",7));ok(!p.matches("samsung",8));
+  ok(p.retryDelay(450,"samsung",7)==500);
+  // Later -1 events in a bound scope keep the shared budget instead of resetting it.
+  p.navigation(600,"samsung",-1);ok(p.delay(600,"samsung",-1)==350);p.scanned(950,"samsung",7);ok(p.navigating(950));
+  // -1 followed by another real window: fresh budget for that window, deadline kept.
+  p.navigation(1000,"samsung",-1);p.scanned(1100,"samsung",9);ok(p.navigating(1100));ok(p.matches("samsung",9));ok(!p.matches("samsung",7));
+  p.navigation(1200,"chrome",-1);ok(!p.matches("samsung",9));ok(p.navigating(1200));
+  // A briefly missing root is retried only inside the same scope's remaining deadline.
+  p.reset();p.navigation(0,"samsung",3);ok(p.missingRootDelay(100,"samsung",3)==150);ok(p.missingRootDelay(100,"samsung",-1)==150);
+  ok(p.missingRootDelay(100,"samsung",4)==-1);ok(p.missingRootDelay(100,"chrome",3)==-1);ok(p.missingRootDelay(2850,"samsung",3)==150);ok(p.missingRootDelay(2900,"samsung",3)==-1);
+  p.endNavigation();ok(p.missingRootDelay(200,"samsung",3)==-1);
+  // Host memory is a tri-state per window, cleared by any scope change.
+  p.reset();p.scanned(0,"samsung",3);ok(p.host()==0);p.rememberHost(1);ok(p.host()==1);p.rememberHost(0);ok(p.host()==1);p.rememberHost(-1);ok(p.host()==-1);
+  p.rememberHost(5);ok(p.host()==1);p.scanned(600,"samsung",4);ok(p.host()==0);p.rememberHost(1);p.scanned(1200,"chrome",4);ok(p.host()==0);p.rememberHost(1);p.reset();ok(p.host()==0);
   System.out.println("Browser scan budget: "+checks+" checks passed");
  }
 }

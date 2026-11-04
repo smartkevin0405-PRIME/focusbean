@@ -34,8 +34,8 @@ function Run-Suite([string]$Name, [string[]]$Sources, [string[]]$Tests) {
 Push-Location $projectRoot
 try {
     Run-Suite 'pure' (Source-Files 'src/app/bean/focus' @('UrlRules', 'BrowserAddress', 'BrowserScanPolicy', 'BlockPolicy', 'DeviceConstants',
-        'UpdateRules', 'WindowPolicy', 'PipDismissTracker', 'RecentClose', 'InstallTimePolicy', 'TimerRules', 'GrowthRules', 'XpMath')) @(
-        'UrlRulesTest', 'BrowserAddressTest', 'BrowserScanPolicyTest', 'BlockPolicyTest', 'WindowPolicyTest', 'UpdateRulesTest', 'RecentCloseTest', 'TimerRulesTest', 'GrowthRulesTest', 'XpMathTest')
+        'UpdateRules', 'WindowPolicy', 'PipDismissTracker', 'RecentClose', 'InstallTimePolicy', 'TimerRules', 'GrowthRules', 'XpMath', 'ShortsFilterRules')) @(
+        'UrlRulesTest', 'BrowserAddressTest', 'BrowserScanPolicyTest', 'BlockPolicyTest', 'WindowPolicyTest', 'UpdateRulesTest', 'RecentCloseTest', 'TimerRulesTest', 'GrowthRulesTest', 'XpMathTest', 'ShortsFilterRulesTest')
     Run-Suite 'state' ((Source-Files 'tests/fakes/android' @('content/Context', 'content/SharedPreferences', 'os/SystemClock', 'os/Build', 'provider/Settings')) +
         @('tests/fakes/app/bean/focus/Prefs.java') + (Source-Files 'src/app/bean/focus' @('FocusLock', 'TimerRules', 'NetworkTime', 'RemovalAccess',
         'BlockPolicy', 'BrowserAddress', 'UrlRules', 'DeviceConstants', 'NewPackageLedger', 'ShortcutCheck', 'InstallTimePolicy'))) @(
@@ -47,7 +47,7 @@ try {
     Run-Suite 'browser' ((Source-Files 'tests/browser_fakes/android' @('os/Bundle', 'graphics/Rect', 'view/accessibility/AccessibilityNodeInfo')) +
         (Source-Files 'src/app/bean/focus' @('BrowserInspector', 'BrowserPlayerInspector', 'BrowserScanPolicy', 'WebShortsRules', 'BrowserAddress', 'UrlRules',
         'BlockPolicy', 'YouTubeInspector', 'SettingsGuard', 'SettingsNodeCollector', 'DeviceConstants', 'ViewIdSnapshot', 'RecentsInspector'))) @(
-        'BrowserInspectorTest', 'YouTubeSettingsTest', 'SettingsGuardDecideTest', 'BrowserPlayerTest', 'BrowserNavigationTest')
+        'BrowserInspectorTest', 'YouTubeSettingsTest', 'SettingsGuardDecideTest', 'BrowserPlayerTest', 'BrowserNavigationTest', 'BrowserHiddenAddressTest')
     $nodeTests = @('guard_test.cjs', 'channel_test.cjs', 'stats_test.cjs', 'stats_dashboard_test.cjs')
     foreach ($test in $nodeTests) { Invoke-Checked $node @("tests/$test") }
     Write-Output "PASS: $script:javaTests Java test programs and $($nodeTests.Count) Node test programs. Android node fakes do not replace device tests."

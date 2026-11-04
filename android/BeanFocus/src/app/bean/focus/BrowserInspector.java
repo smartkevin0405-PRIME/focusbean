@@ -2,14 +2,18 @@ package app.bean.focus;
 import android.view.accessibility.AccessibilityNodeInfo;
 import java.util.*;
 
-/** Reads browser chrome and document metadata, never arbitrary page links as navigation. */
+/**
+ * Reads browser chrome and document metadata, never arbitrary page links as navigation.
+ * Current Chromium (and so Samsung Internet) attaches no page URL to accessibility
+ * nodes; the "url" extra is read only in case a browser build provides it.
+ */
 final class BrowserInspector {
  static final String TARGET="AccessibilityNodeInfo.targetUrl";
  private static final int NATIVE_LIMIT=180,DOCUMENT_SHELL_LIMIT=24,DOCUMENT_REFRESH_LIMIT=4;
  static final class Result {
   String url="",source="없음",documentUrl="",playerState="";
-  boolean editing,playerShorts,playerChecked,nativeTruncated,playerTruncated,documentUnavailable;
-  int nativeNodes,documentNodes,playerNodes,documentRefreshes;
+  boolean editing,playerShorts,playerChecked,nativeTruncated,playerTruncated,documentUnavailable,pageYouTube;
+  int nativeNodes,documentNodes,playerNodes,documentRefreshes,youtubeLinks,otherLinks,pageEvidence;
   // A document location wins over a stale toolbar regardless of sibling order.
   void document(String raw){String value=BrowserAddress.clean(raw);if(UrlRules.parse(value)!=null&&!documentKnown())documentUrl=value;}
   private boolean documentKnown(){return documentLocation(documentUrl);}
@@ -17,15 +21,25 @@ final class BrowserInspector {
   boolean confirmedHome(){return !playerShorts&&BrowserAddress.isDocumentHome(documentUrl);}
   boolean knownLocation(){return confirmedHome()||BrowserAddress.hasPath(url);}
   void offer(String raw,String from){String candidate=BrowserAddress.clean(raw);if(BrowserAddress.score(candidate)>BrowserAddress.score(url)){url=candidate;source=from;}}
-  boolean youtube(){return UrlRules.isYouTube(url);}
+  boolean youtube(){return UrlRules.isYouTube(url)||pageYouTube;}
+  boolean addressHidden(){return !BrowserAddress.known(url);}
+  // Only a host class leaves this object: 1 YouTube, -1 another site, 0 unknown.
+  int hostEvidence(){return addressHidden()?pageEvidence:UrlRules.isYouTube(url)?1:-1;}
   boolean shorts(){return UrlRules.isShorts(url)||playerShorts;}
-  String diagnostic(){return (confirmedHome()?"유튜브 홈 확인":BrowserAddress.status(url))+"\n읽은 위치: "+source+" · 경로 "+(confirmedHome()?"루트 / 확인":BrowserAddress.hasPath(url)?"있음":"미확인")+(editing?" · 주소 입력 중":"")+(playerState.isEmpty()?"":"\n"+playerState)+"\n탐색 노드: UI "+nativeNodes+" · 문서 "+documentNodes+" · 플레이어 "+playerNodes+(nativeTruncated?"\n브라우저 UI 탐색 한도 도달":"")+(playerTruncated?"\n웹 플레이어 탐색 한도 도달":"");}
+  String diagnostic(){return (confirmedHome()?"유튜브 홈 확인":addressHidden()&&pageYouTube?"주소창 숨김 · 유튜브 화면으로 판단":BrowserAddress.status(url))+(playerChecked&&addressHidden()?" · 화면 링크 유튜브 "+youtubeLinks+" / 기타 "+otherLinks:"")+"\n읽은 위치: "+source+" · 경로 "+(confirmedHome()?"루트 / 확인":BrowserAddress.hasPath(url)?"있음":"미확인")+(editing?" · 주소 입력 중":"")+(playerState.isEmpty()?"":"\n"+playerState)+"\n탐색 노드: UI "+nativeNodes+" · 문서 "+documentNodes+" · 플레이어 "+playerNodes+(nativeTruncated?"\n브라우저 UI 탐색 한도 도달":"")+(playerTruncated?"\n웹 플레이어 탐색 한도 도달":"");}
  }
  static Result read(AccessibilityNodeInfo root,String pkg){return read(root,pkg,true);}
  static Result read(AccessibilityNodeInfo root,String pkg,boolean allowPlayerFallback){
   return read(root,pkg,allowPlayerFallback,false);
  }
  static Result read(AccessibilityNodeInfo root,String pkg,boolean allowPlayerFallback,boolean navigationHint){
+  return read(root,pkg,allowPlayerFallback,navigationHint,0);
+ }
+ /**
+  * @param hostMemory host class last read from this browser window (1 YouTube, -1 other,
+  *        0 unknown). It lets a hidden toolbar keep its YouTube context without storing a URL.
+  */
+ static Result read(AccessibilityNodeInfo root,String pkg,boolean allowPlayerFallback,boolean navigationHint,int hostMemory){
   Result result=new Result();if(root==null||pkg==null)return result;
   ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();
   List<AccessibilityNodeInfo> webRoots=new ArrayList<>();queue.add(AccessibilityNodeInfo.obtain(root));
@@ -50,16 +64,27 @@ final class BrowserInspector {
     try{for(AccessibilityNodeInfo n:found)address(n,result);}finally{for(AccessibilityNodeInfo n:found)if(n!=null)n.recycle();}
    }
    result.finishDocument();
-   if(result.youtube()&&!result.editing&&(!result.knownLocation()||navigationHint)){
+   // Chromium exposes no page URL on accessibility nodes, and Samsung Internet hides its
+   // toolbar while scrolling. With no readable address, check the page only when this
+   // window was last seen on YouTube or its host is still unknown; on-page link hosts
+   // must then confirm YouTube before any player layout can count.
+   boolean hidden=result.addressHidden()&&hostMemory>=0;
+   if(!result.editing&&(hidden||result.youtube()&&(!result.knownLocation()||navigationHint))){
     if(webRoots.isEmpty())result.playerState="웹 플레이어: 이번 탐색에서 웹 루트 없음";
     else if(!allowPlayerFallback)result.playerState="웹 플레이어: 재검사 대기";
     else{
      result.playerChecked=true;
      BrowserPlayerInspector.Result player=BrowserPlayerInspector.readRoots(webRoots);
+     result.youtubeLinks=player.youtubeLinks;result.otherLinks=player.otherLinks;
+     if(hidden){
+      result.pageEvidence=WebShortsRules.page(player.youtubeLinks,player.otherLinks);
+      result.pageYouTube=result.pageEvidence>0||(hostMemory>0&&result.pageEvidence==0);
+      result.playerShorts=result.pageYouTube&&player.shorts;
+     }else
      // A click is only a reason to refresh: a known home/watch URL may be
      // overridden only by a current player ID plus controls, never geometry.
      result.playerShorts=result.knownLocation()?player.strongShorts:player.shorts;
-     result.playerState=player.shorts&&!result.playerShorts?"웹 플레이어: 일반 경로 유지 · 플레이어 ID 미확인 · 웹 노드 "+player.webNodes+" · 오른쪽 동작 "+player.controls:player.diagnostic();
+     result.playerState=player.shorts&&!result.playerShorts?(hidden?"웹 플레이어: 유튜브 화면 미확인 · 차단 안 함":"웹 플레이어: 일반 경로 유지 · 플레이어 ID 미확인")+" · 웹 노드 "+player.webNodes+" · 오른쪽 동작 "+player.controls:player.diagnostic();
      result.playerNodes=player.nodes;result.playerTruncated=player.truncated;
     }
    }

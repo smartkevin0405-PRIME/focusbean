@@ -21,9 +21,20 @@ public class FocusService extends AccessibilityService {
  private final Runnable browserCheck=()->safe("브라우저 변경 점검",()->{
   String p=pendingBrowser;int window=pendingBrowserWindow;pendingBrowser="";pendingBrowserWindow=-1;
   if(p.isEmpty()||!Prefs.shorts(this)||!awake()){browserBudget.endNavigation();return;}
-  AccessibilityNodeInfo root=activeRoot(p,window);if(root==null){browserBudget.endNavigation();return;}
+  AccessibilityNodeInfo root=activeRoot(p,window);if(root==null){retryMissingRoot(p,window);return;}
   try{if(browserBudget.delay(SystemClock.elapsedRealtime(),p,root.getWindowId())>0){queueBrowserScan(p,root.getWindowId());return;}captureIds(root,p);inspect(root,p,false);}finally{root.recycle();}
  });
+ // During a page transition the provider may briefly expose no root. Keep only the
+ // remaining navigation deadline, and stop at once when another app/window is in front.
+ private void retryMissingRoot(String p,int window){
+  long wait=browserBudget.missingRootDelay(SystemClock.elapsedRealtime(),p,window);
+  if(wait<0||!frontMayBe(p,window)){browserBudget.endNavigation();return;}
+  queueBrowserScan(p,window,wait);
+ }
+ private boolean frontMayBe(String p,int window){
+  AccessibilityNodeInfo front=getRootInActiveWindow();if(front==null)return true;
+  try{return p.equals(packageOf(front))&&(window<0||front.getWindowId()==window);}finally{front.recycle();}
+ }
  private String browserState="아직 브라우저를 확인하지 못했어요",errorState="",youtubeState="",lastGamePackage="";
  private boolean receiverRegistered;
  private HandlerThread recordThread;private Handler recordHandler;
@@ -46,7 +57,7 @@ public class FocusService extends AccessibilityService {
  static String diagnostics(Context c){
   if(current==null){String enabled=android.provider.Settings.Secure.getString(c.getContentResolver(),android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);boolean allowed=enabled!=null&&enabled.contains(c.getPackageName()+"/");return allowed?"접근성 설정은 켜짐 · 서비스 연결은 확인 안 됨. 접근성을 껐다 켜주세요.":"접근성 설정에서 집중콩을 켜주세요.";}
   FocusService s=current;long age=Math.max(0,(SystemClock.elapsedRealtime()-s.beat)/1000);
-  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
+  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+"\n"+SamsungContentBlocker.status(c)+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
  }
  private int newPackageCount(){android.content.SharedPreferences p=Prefs.get(this);String id=p.getString("lock_id","");return FocusLock.active(this)&&!id.isEmpty()&&id.equals(p.getString("lock_new_pkgs_id",""))?p.getStringSet("lock_new_pkgs",Collections.emptySet()).size():0;}
  private void safe(String phase,Runnable work){try{work.run();}catch(RuntimeException e){String failure=phase+" · "+e.getClass().getSimpleName();if(Looper.myLooper()==Looper.getMainLooper()){errors++;errorState=failure;}else handler.post(()->{errors++;errorState=failure;});}}
@@ -108,15 +119,21 @@ public class FocusService extends AccessibilityService {
   recentClose.observe(now,RecentsInspector.visible(root,p),foreground);if(foreground&&!recentClose.active(now))lastGame=-2000;
  }
 
+ // YouTube emits content events continuously during playback. Decide with cheap state
+ // first; only blocked-app handling, explicit ID capture or a due Shorts check reads the tree.
+ private boolean youtubeEventDue(String p){
+  long now=SystemClock.elapsedRealtime();
+  return blockedApp(p)||now<=dumpUntil||(Prefs.shorts(this)&&now-lastYouTubeScan>=250);
+ }
  private void inspectYouTube(AccessibilityNodeInfo root){
   if(!Prefs.shorts(this))return;final String p=packageOf(root);
   if(FocusLock.active(this)){restrict(p,"잠금 중 유튜브 앱 · 내장 웹 화면을 사용하세요");return;}
   if(SystemClock.elapsedRealtime()-lastYouTubeScan<250)return;lastYouTubeScan=SystemClock.elapsedRealtime();String id=YouTubeInspector.player(root);browserState="YouTube 앱 · "+(id.isEmpty()?"쇼츠 플레이어 ID 없음 (화면 판별 보장 아님)":"쇼츠 플레이어 감지: "+id);
   if(id.isEmpty()||SystemClock.elapsedRealtime()-lastAction<1100)return;
-  lastAction=SystemClock.elapsedRealtime();int window=root.getWindowId();boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p);browserState+=" · 뒤로 요청 "+(delivered?"전달됨":"실패");record("shorts",p);
+  lastAction=SystemClock.elapsedRealtime();int window=root.getWindowId();boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p,window);browserState+=" · 뒤로 요청 "+(delivered?"전달됨":"실패");record("shorts",p);
   handler.postDelayed(()->safe("앱 쇼츠 이동 확인",()->{
    if(!Prefs.shorts(this)||!awake())return;AccessibilityNodeInfo again=activeRoot(p,window);if(again==null)return;
-   try{String remains=YouTubeInspector.player(again);if(!remains.isEmpty()){lastAction=SystemClock.elapsedRealtime();globalActionFor(GLOBAL_ACTION_HOME,p);browserState="YouTube 쇼츠 플레이어가 남아 홈 이동 요청 · "+remains;}else browserState="YouTube 앱 · 뒤로 이동 후 플레이어 ID 없음";}finally{again.recycle();}
+   try{String remains=YouTubeInspector.player(again);if(!remains.isEmpty()){lastAction=SystemClock.elapsedRealtime();globalActionFor(GLOBAL_ACTION_HOME,p,window);browserState="YouTube 쇼츠 플레이어가 남아 홈 이동 요청 · "+remains;}else browserState="YouTube 앱 · 뒤로 이동 후 플레이어 ID 없음";}finally{again.recycle();}
   }),850);
  }
  @Override public void onAccessibilityEvent(AccessibilityEvent event){safe("화면 이벤트",()->handleEvent(event));}
@@ -127,6 +144,7 @@ public class FocusService extends AccessibilityService {
   if(recentClose.active(SystemClock.elapsedRealtime())){AccessibilityNodeInfo front=getRootInActiveWindow();if(front!=null)try{observeRecent(front);}finally{front.recycle();}else recentClose.cancel();}
   String p=event.getPackageName()==null?"":event.getPackageName().toString();if(p.isEmpty()||p.equals(getPackageName())||emergencySurface(p))return;
   if(SettingsGuard.surface(p)||YouTubeInspector.isPackage(p)){
+   if(YouTubeInspector.isPackage(p)&&!youtubeEventDue(p))return;
    AccessibilityNodeInfo root=activeRoot(p,-1);if(root!=null)try{captureIds(root,p);if(guard(root,p))return;if(YouTubeInspector.isPackage(p)){if(blockedApp(p))checkBlockedWindows();else inspectYouTube(root);return;}}finally{root.recycle();}
   }
   if(blockedApp(p)){// Reject stale events if that app no longer owns an interactive window.
@@ -167,8 +185,9 @@ public class FocusService extends AccessibilityService {
  private BrowserInspector.Result readBrowser(AccessibilityNodeInfo root,String p,boolean confirmAction){
   long started=SystemClock.elapsedRealtime();browserBudget.scanned(started,p,root.getWindowId());
   try{
-   BrowserInspector.Result r=BrowserInspector.read(root,p,confirmAction||browserBudget.allowPlayer(started),confirmAction||browserBudget.navigating(started));
+   BrowserInspector.Result r=BrowserInspector.read(root,p,confirmAction||browserBudget.allowPlayer(started),confirmAction||browserBudget.navigating(started),browserBudget.host());
    if(r.playerChecked){playerScans++;browserBudget.playerScanned(SystemClock.elapsedRealtime());}
+   browserBudget.rememberHost(r.hostEvidence());
    return r;
   }finally{lastBrowserMs=SystemClock.elapsedRealtime()-started;totalBrowserMs+=lastBrowserMs;maxBrowserMs=Math.max(maxBrowserMs,lastBrowserMs);browserScans++;}
  }
@@ -232,6 +251,7 @@ public class FocusService extends AccessibilityService {
  private void sampleExternal(){
   beat=SystemClock.elapsedRealtime();checks++;if(dumpExpires>0&&beat>dumpExpires){dump="";dumpPackage="";dumpExpires=0;}safe("브라우저 목록",()->catalog.refresh());
   if(beat-reportAt>30000||youtubeState.isEmpty()){youtubeState=AppCatalog.youtubeStatus(this);NetworkTime.now();reportAt=beat;}
+  safe("삼성 인터넷 차단 목록",()->SamsungContentBlocker.sync(this));
   if(!awake()){shield.hide();sampleWeb(null);return;}
   AccessibilityNodeInfo root=getRootInActiveWindow();boolean sampled=false;
   if(root!=null)try{observeRecent(root);String p=packageOf(root);captureIds(root,p);

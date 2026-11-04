@@ -9,6 +9,8 @@ public final class BrowserAddress {
  public static String clean(String raw){return raw==null?"":raw.replaceAll("[\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]","").trim();}
  // A bare host, including a trailing '/', cannot prove that the browser exposed its path.
  public static boolean hasPath(String raw){URI u=UrlRules.parse(raw);return u!=null&&u.getPath()!=null&&u.getPath().length()>1;}
+ // A toolbar title such as "YouTube" parses as a bare host but is not an address.
+ static boolean known(String raw){URI u=UrlRules.parse(raw);return u!=null&&u.getHost().contains(".");}
  static int score(String raw){if(UrlRules.parse(raw)==null)return 0;return hasPath(raw)?(UrlRules.isShorts(raw)?4:3):1;}
  static boolean isDocumentHome(String raw){URI u=UrlRules.parse(raw);return u!=null&&UrlRules.isYouTube(raw)&&"/".equals(u.getPath());}
  public static String better(String a,String b){a=clean(a);b=clean(b);return score(b)>score(a)?b:a;}

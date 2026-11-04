@@ -8,8 +8,13 @@
     <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
     <intent><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https"/></intent>
     <package android:name="com.google.android.youtube"/>
+    <package android:name="com.sec.android.app.sbrowser"/>
+    <intent><action android:name="com.samsung.android.sbrowser.contentBlocker.ACTION_SETTING"/></intent>
   </queries>
   <application android:label="집중콩" android:theme="@style/AppTheme" android:icon="@drawable/icon" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
+    <!-- Samsung Internet Content Blocker API: read-only Shorts filter list. -->
+    <meta-data android:name="com.samsung.android.sbrowser.contentBlocker.interfaceVersion" android:value="API_1.0"/>
+    <provider android:name=".ShortsFilterProvider" android:authorities="app.bean.focus.contentBlocker.contentProvider" android:exported="true"/>
     <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
     <activity android:name=".StudyActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
     <activity android:name=".UpdateActivity" android:exported="false"/>
