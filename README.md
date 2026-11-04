@@ -5,11 +5,14 @@
 - [앱 소스](android/BeanFocus/)
 - [Linux / Windows 빌드와 테스트](android/BeanFocus/BUILDING.md)
 - [0.14 소스 변경 및 검증 범위](android/BeanFocus/REPORT-0.14.md)
+- [0.15 수정 및 다음 세션 인계](android/BeanFocus/HANDOFF-2026-11-04.md)
 - [현재 배포 APK](https://github.com/smartkevin0405-PRIME/focusbean/releases/latest/download/BeanFocus-latest.apk)
 
 ## 소스와 설치 버전
 
-현재 소스는 **0.14-beta**입니다. 삼성 인터넷의 문서 URL 수집과 브라우저 검사 비용을 개선했습니다.
+현재 작업 소스는 **0.15-beta (미배포)**입니다. 삼성 인터넷 쇼츠 감지와 전환 직후 재검사를 수정했습니다.
+다음 세션에서 확인할 남은 문제·검증·서명/배포 상태는 [인계 문서](android/BeanFocus/HANDOFF-2026-11-04.md)를 따릅니다.
+아래는 기존에 배포한 **0.14-beta** 상태입니다. 삼성 인터넷의 문서 URL 수집과 브라우저 검사 비용을 개선했습니다.
 주소 경로와 웹 노드가 모두 제공되지 않는 화면에서는 여전히 쇼츠를 구분할 수 없습니다.
 유튜브 도메인만으로 일반 영상까지 차단하지 않으며 실기기 차단 성공이나 속도 향상을 보장하지 않습니다.
 

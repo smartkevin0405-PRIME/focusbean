@@ -14,11 +14,12 @@ java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/te
 java -cp build/test-growth app.bean.focus.GrowthTrackerTest
 java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/test-telemetry tests/fakes/android/{content/Context,os/SystemClock}.java tests/fakes/app/bean/focus/AnalyticsDb.java src/app/bean/focus/TelemetrySession.java tests/TelemetrySessionTest.java
 java -cp build/test-telemetry app.bean.focus.TelemetrySessionTest
-java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/test-browser tests/browser_fakes/android/{os/Bundle,graphics/Rect,view/accessibility/AccessibilityNodeInfo}.java src/app/bean/focus/{BrowserInspector,BrowserPlayerInspector,WebShortsRules,BrowserAddress,UrlRules,BlockPolicy,YouTubeInspector,SettingsGuard,SettingsNodeCollector,DeviceConstants,ViewIdSnapshot,RecentsInspector}.java tests/{BrowserInspectorTest,BrowserPlayerTest,YouTubeSettingsTest,SettingsGuardDecideTest}.java
+java -jar "$ECJ_JAR" -nowarn -encoding UTF-8 -source 1.8 -target 1.8 -d build/test-browser tests/browser_fakes/android/{os/Bundle,graphics/Rect,view/accessibility/AccessibilityNodeInfo}.java src/app/bean/focus/{BrowserInspector,BrowserPlayerInspector,BrowserScanPolicy,WebShortsRules,BrowserAddress,UrlRules,BlockPolicy,YouTubeInspector,SettingsGuard,SettingsNodeCollector,DeviceConstants,ViewIdSnapshot,RecentsInspector}.java tests/{BrowserInspectorTest,BrowserPlayerTest,BrowserNavigationTest,YouTubeSettingsTest,SettingsGuardDecideTest}.java
 java -cp build/test-browser app.bean.focus.BrowserInspectorTest
 java -cp build/test-browser app.bean.focus.YouTubeSettingsTest
 java -cp build/test-browser app.bean.focus.SettingsGuardDecideTest
 java -cp build/test-browser app.bean.focus.BrowserPlayerTest
+java -cp build/test-browser app.bean.focus.BrowserNavigationTest
 node tests/guard_test.cjs
 node tests/channel_test.cjs
 node tests/stats_test.cjs

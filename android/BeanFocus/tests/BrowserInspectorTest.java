@@ -54,6 +54,25 @@ public class BrowserInspectorTest {
   root=node();bar=node().id("com.android.chrome:id/url_bar").text("youtube.com/watch?v=lesson");root.child(bar);web=node().cls("android.webkit.WebView");web.getExtras().putCharSequence("url","https://youtube.com/watch?v=lesson");
   for(int i=0;i<800;i++){link=node();web.child(link);link.recycle();}root.child(web);queriesBefore=AccessibilityNodeInfo.queries;readsBefore=AccessibilityNodeInfo.childReads;r=BrowserInspector.read(root,"com.android.chrome",true);
   ok(!r.shorts());ok(!r.playerChecked);ok(r.nativeNodes==3);ok(AccessibilityNodeInfo.queries==queriesBefore);ok(AccessibilityNodeInfo.childReads-readsBefore==2);ok(web.childReads()==0);root.recycle();bar.recycle();web.recycle();
+  // The address bar may be hidden during video playback. A host-only document
+  // remains YouTube context (not a confirmed home), enabling the player scan.
+  root=node();web=node().cls("android.webkit.WebView");web.getExtras().putCharSequence("url","https://m.youtube.com");root.child(web);
+  r=BrowserInspector.read(root,pkg);ok(r.youtube());ok(!r.confirmedHome());ok(!r.knownLocation());ok(r.playerChecked);root.recycle();web.recycle();
+  // Native wrappers without view IDs may precede Chromium's virtual document.
+  root=node();web=node().cls("android.webkit.WebView");AccessibilityNodeInfo shell=node().cls("android.widget.FrameLayout");document=node();document.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");document.getExtras().putCharSequence("url","https://m.youtube.com/shorts/current");shell.child(document);web.child(shell);root.child(web);
+  r=BrowserInspector.read(root,pkg,false);ok(r.shorts());ok(r.documentNodes==3);ok(r.documentRefreshes==2);ok(document.childReads()==0);root.recycle();web.recycle();shell.recycle();document.recycle();
+  // Several native WebView shells may expose only the host before the virtual root.
+  root=node();web=node().cls("android.webkit.WebView");web.getExtras().putCharSequence("url","https://m.youtube.com");shell=node().cls("android.webkit.WebView");shell.getExtras().putCharSequence("url","https://m.youtube.com");document=node();document.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");document.getExtras().putCharSequence("url","https://m.youtube.com/shorts/current");shell.child(document);web.child(shell);root.child(web);r=BrowserInspector.read(root,pkg,false);ok(r.shorts());ok(r.documentRefreshes==3);root.recycle();web.recycle();shell.recycle();document.recycle();
+  // A refreshed document's current route must replace the Android snapshot.
+  root=node();web=node().cls("android.webkit.WebView").refreshedUrl("https://m.youtube.com/shorts/current");web.getExtras().putCharSequence("url","https://m.youtube.com/");root.child(web);
+  r=BrowserInspector.read(root,pkg,false);ok(r.shorts());ok(!r.confirmedHome());ok(web.refreshes()==1);
+  web.refreshedUrl("https://m.youtube.com/watch?v=normal");r=BrowserInspector.read(root,pkg,false);ok(!r.shorts());ok(r.url.contains("/watch"));
+  web.refreshedUrl("https://m.youtube.com/shorts/detached").refreshable(false);r=BrowserInspector.read(root,pkg);ok(!r.shorts());ok(r.documentUnavailable);ok(!r.playerChecked);root.recycle();web.recycle();
+  // Offscreen documents must not replace the currently visible page evidence.
+  root=node();web=node().cls("android.webkit.WebView");web.getExtras().putCharSequence("url","https://youtube.com/shorts/offscreen");web.getExtras().putBoolean("AccessibilityNodeInfo.offscreen",true);root.child(web);bar=node().id(id).text("youtube.com/watch?v=current");root.child(bar);
+  r=BrowserInspector.read(root,pkg);ok(!r.shorts());ok(r.url.contains("/watch"));root.recycle();web.recycle();bar.recycle();
+  // Refresh operations are bounded independently of the shallow-shell budget.
+  root=node();for(int i=0;i<20;i++){web=node().cls("android.webkit.WebView");root.child(web);web.recycle();}r=BrowserInspector.read(root,pkg);ok(r.documentRefreshes==4);ok(r.documentUnavailable);root.recycle();
   ok(BrowserInspector.read(null,pkg).url.isEmpty());
   ok(AccessibilityNodeInfo.handles==0);ok(AccessibilityNodeInfo.queries>0);
   System.out.println("Browser inspector: "+checks+" checks passed (Android node fakes)");

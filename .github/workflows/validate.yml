@@ -55,7 +55,7 @@ jobs:
       - name: Run Java and JavaScript regression tests
         run: bash tests/run-tests.sh
       - name: Audit browser blocking and service integration
-        run: python3 tests/audit_014.py
+        run: python3 tests/audit_015.py
       - name: Compile and package unsigned APK
         env:
           UNSIGNED_ONLY: '1'

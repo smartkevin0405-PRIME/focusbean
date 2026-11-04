@@ -35,5 +35,5 @@ if [[ ! -f "$SIGNING_KEYSTORE" ]]; then
  echo "Existing signing key is required; refusing to generate a replacement key." >&2
  exit 1
 fi
-java -jar "$BUILD_TOOLS/lib/apksigner.jar" sign --ks "$SIGNING_KEYSTORE" --ks-key-alias "$SIGNING_KEY_ALIAS" --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:SIGNING_KEY_PASSWORD --out BeanFocus-0.14-beta.apk build/aligned.apk
-java -jar "$BUILD_TOOLS/lib/apksigner.jar" verify --verbose BeanFocus-0.14-beta.apk
+java -jar "$BUILD_TOOLS/lib/apksigner.jar" sign --ks "$SIGNING_KEYSTORE" --ks-key-alias "$SIGNING_KEY_ALIAS" --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:SIGNING_KEY_PASSWORD --out BeanFocus-0.15-beta.apk build/aligned.apk
+java -jar "$BUILD_TOOLS/lib/apksigner.jar" verify --verbose BeanFocus-0.15-beta.apk

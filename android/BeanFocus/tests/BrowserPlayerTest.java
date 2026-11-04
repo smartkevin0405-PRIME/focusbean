@@ -10,6 +10,7 @@ public class BrowserPlayerTest {
   for(int i=0;i<3;i++)add(w,node().cls("android.widget.Button").description(labels[i]).bounds(vertical?590:40+i*200,vertical?800+i*140:800,vertical?690:140+i*200,vertical?890+i*140:890));
   add(w,node().text("구독").bounds(330,1130,470,1220));add(w,node().text("@test-channel").bounds(70,1130,300,1220));return w;}
  static AccessibilityNodeInfo browser(AccessibilityNodeInfo web,String address){AccessibilityNodeInfo r=node();add(r,node().id("com.sec.android.app.sbrowser:id/location_bar_edit_text").text(address));r.child(web);return r;}
+ static AccessibilityNodeInfo strongPage(){AccessibilityNodeInfo w=page(true);add(w,node().id("shorts-player").bounds(0,150,700,1300));return w;}
  public static void main(String[] args){
   AccessibilityNodeInfo w=page(true),r=browser(w,"m.youtube.com");BrowserInspector.Result result=BrowserInspector.read(r,"com.sec.android.app.sbrowser");ok(result.playerShorts);ok(result.shorts());ok(result.playerChecked);ok(result.playerNodes==6);ok(r.childReads()==2);ok(result.diagnostic().contains("쇼츠 버튼 배치 감지"));ok(!result.diagnostic().contains("@test-channel"));r.recycle();w.recycle();
   // Service cooldown can skip only the expensive geometry scan while preserving
@@ -40,6 +41,33 @@ public class BrowserPlayerTest {
   // A transparent native WebView wrapper still permits its own complete document.
   w=node().cls("android.webkit.WebView").bounds(0,100,700,1400);nested=page(true).cls("android.view.View");nested.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");add(w,nested);ok(BrowserPlayerInspector.read(w).shorts);w.recycle();
   w=node().cls("android.webkit.WebView").bounds(0,100,700,1400);for(int i=0;i<800;i++)add(w,node().text("#shorts"));int before=AccessibilityNodeInfo.childReads;BrowserPlayerInspector.Result budget=BrowserPlayerInspector.read(w);ok(budget.nodes==600);ok(budget.truncated);ok(AccessibilityNodeInfo.childReads-before==599);w.recycle();
+  // SPA navigation can temporarily keep a home/watch document URL. Only a
+  // current player ID plus controls may override it during an explicit hint.
+  for(String location:new String[]{"https://m.youtube.com/","https://m.youtube.com/watch?v=normal"}){
+   w=page(true);w.getExtras().putCharSequence("url",location);r=browser(w,"m.youtube.com");
+   result=BrowserInspector.read(r,"com.sec.android.app.sbrowser",true,true);ok(result.playerChecked);ok(!result.shorts());ok(result.diagnostic().contains("일반 경로 유지"));r.recycle();w.recycle();
+   w=strongPage();w.getExtras().putCharSequence("url",location);r=browser(w,"m.youtube.com");
+   result=BrowserInspector.read(r,"com.sec.android.app.sbrowser",true,false);ok(!result.playerChecked);ok(!result.shorts());
+   result=BrowserInspector.read(r,"com.sec.android.app.sbrowser",true,true);ok(result.playerShorts);ok(!result.confirmedHome());
+   result=BrowserInspector.read(r,"com.sec.android.app.sbrowser",false,true);ok(!result.playerChecked);ok(!result.shorts());r.recycle();w.recycle();
+  }
+  // Hidden toolbar plus document-only host still reaches player detection.
+  w=strongPage();w.getExtras().putCharSequence("url","https://m.youtube.com");r=node();r.child(w);result=BrowserInspector.read(r,"com.sec.android.app.sbrowser");ok(result.youtube());ok(result.playerShorts);r.recycle();w.recycle();
+  // A stale toolbar from another site cannot hide the freshly read document host.
+  w=strongPage();w.getExtras().putCharSequence("url","https://m.youtube.com");r=browser(w,"https://example.org/article");result=BrowserInspector.read(r,"com.sec.android.app.sbrowser");ok(result.youtube());ok(result.playerShorts);r.recycle();w.recycle();
+  // A host-only native shell still leads to its same-host virtual document;
+  // it must not be mistaken for an iframe below a complete document URL.
+  w=node().cls("android.webkit.WebView").bounds(0,100,700,1400);w.getExtras().putCharSequence("url","https://m.youtube.com");nested=strongPage().cls("android.view.View");nested.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");nested.getExtras().putCharSequence("url","https://m.youtube.com");add(w,nested);r=node();r.child(w);result=BrowserInspector.read(r,"com.sec.android.app.sbrowser");ok(result.youtube());ok(result.playerShorts);r.recycle();w.recycle();
+  // A defunct virtual document must not re-enter through the wrapper's player scan.
+  w=node().cls("android.webkit.WebView").bounds(0,100,700,1400);w.getExtras().putCharSequence("url","https://m.youtube.com");nested=strongPage().cls("android.view.View").refreshable(false);nested.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");add(w,nested);r=node();r.child(w);result=BrowserInspector.read(r,"com.sec.android.app.sbrowser",true,true);ok(!result.playerChecked);ok(!result.shorts());r.recycle();w.recycle();
+  // Chromium's visible flag includes offscreen nodes. Explicit offscreen
+  // controls or player roots cannot provide active player evidence.
+  w=strongPage();w.getExtras().putBoolean("AccessibilityNodeInfo.offscreen",true);ok(!BrowserPlayerInspector.read(w).shorts);w.recycle();
+  w=strongPage();AccessibilityNodeInfo control=w.getChild(0);control.getExtras().putBoolean("AccessibilityNodeInfo.offscreen",true);control.recycle();control=w.getChild(1);control.getExtras().putBoolean("AccessibilityNodeInfo.offscreen",true);control.recycle();ok(!BrowserPlayerInspector.read(w).shorts);w.recycle();
+  // A complete Shorts player inside an iframe is still not a top-level player.
+  w=node().cls("android.webkit.WebView").bounds(0,100,700,1400);w.getExtras().putCharSequence("url","https://m.youtube.com/watch?v=normal");nested=strongPage();nested.getExtras().putCharSequence("AccessibilityNodeInfo.chromeRole","rootWebArea");nested.getExtras().putCharSequence("url","https://m.youtube.com/shorts/embedded");add(w,nested);r=browser(w,"m.youtube.com");result=BrowserInspector.read(r,"com.sec.android.app.sbrowser",true,true);ok(!result.shorts());r.recycle();w.recycle();
+  // A non-YouTube web document cannot provide controls for a YouTube toolbar.
+  w=strongPage();w.getExtras().putCharSequence("url","https://example.org/");ok(!BrowserPlayerInspector.read(w).shorts);w.recycle();
   ok(AccessibilityNodeInfo.handles==0);System.out.println("Browser web-player fallback: "+checks+" checks passed");
  }
 }

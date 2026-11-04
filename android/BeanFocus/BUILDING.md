@@ -1,7 +1,7 @@
 # 집중콩 소스 빌드
 
-이 디렉터리는 0.13-beta 원본에서 이어서 수정한 0.14-beta(versionCode 14) 앱 소스다.
-현재 변경 내역과 실기기 검증의 한계는 `REPORT-0.14.md`에 기록한다.
+이 디렉터리는 0.13-beta 원본에서 이어서 수정한 0.15-beta(versionCode 15, 미배포) 앱 소스다.
+현재 변경 내역과 실기기 검증의 한계는 `HANDOFF-2026-11-04.md`에 기록한다.
 서명키·암호·토큰, APK, SDK, 빌드 산출물, 실행 로그, 기기의 개인 기록은 포함하지 않는다.
 
 서명 설정은 외부 환경변수로만 전달한다. 원본 소스 공개 이후 브라우저 감지와 검사 주기를
@@ -43,11 +43,11 @@ export ECJ_JAR=/absolute/path/to/ecj-3.37.0.jar
 
 ```bash
 bash tests/run-tests.sh
-python3 tests/audit_014.py
+python3 tests/audit_015.py
 ```
 
-기본 러너는 Java 테스트 20개와 Node 테스트 4개를 실행한다.
-`audit_010.py`~`audit_013.py`는 이전 버전 전용 기록이며 현재 검증에는 `audit_014.py`를 사용한다.
+기본 러너는 Java 테스트 21개와 Node 테스트 4개를 실행한다.
+`audit_010.py`~`audit_014.py`는 이전 버전 전용 기록이며 현재 검증에는 `audit_015.py`를 사용한다.
 Android 대역 테스트이므로 실제 One UI 접근성·PiP·보안 폴더 동작 검증을 대신하지 않는다.
 
 선택적인 화면 렌더링 검증은 Playwright와 Chromium을 별도로 준비한 뒤 실행한다.
@@ -89,7 +89,7 @@ bash build.sh
 unset SIGNING_STORE_PASSWORD SIGNING_KEY_PASSWORD
 ```
 
-결과: `BeanFocus-0.14-beta.apk`. 스크립트는 키를 새로 만들거나 업로드하지 않는다.
+결과: `BeanFocus-0.15-beta.apk`. 스크립트는 키를 새로 만들거나 업로드하지 않는다.
 암호는 apksigner에 환경변수로 전달하며 저장소 파일·명령 인수에 직접 넣지 않는다.
 
 ## 파일 출처 확인
