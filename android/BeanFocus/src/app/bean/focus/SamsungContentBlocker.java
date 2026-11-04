@@ -41,10 +41,10 @@ final class SamsungContentBlocker {
   if(!temp.renameTo(target)){target.delete();if(!temp.renameTo(target))throw new IOException("filter list not replaced");}
   return target;
  }
- /** Records only when and whether Samsung Internet itself fetched the list. */
+ /** Records only the time Samsung Internet itself last fetched the list. */
  static void served(Context c,String caller){
-  boolean samsung=false;for(String pkg:BROWSERS)if(pkg.equals(caller))samsung=true;
-  Prefs.get(c).edit().putLong("samsung_blocker_served_wall",System.currentTimeMillis()).putBoolean("samsung_blocker_served_by_browser",samsung).apply();
+  // The provider is public, so other callers must not overwrite the browser's fetch time.
+  for(String pkg:BROWSERS)if(pkg.equals(caller)){Prefs.get(c).edit().putLong("samsung_blocker_served_wall",System.currentTimeMillis()).apply();return;}
  }
  static String status(Context c){
   if(!installed(c))return "삼성 인터넷 차단 목록: 삼성 인터넷이 없거나 광고 차단기를 지원하지 않음";
@@ -52,7 +52,6 @@ final class SamsungContentBlocker {
   String rules=Prefs.shorts(c)?"쇼츠 규칙 켜짐":"쇼츠 차단 꺼짐 · 빈 목록";
   if(at<=0)return "삼성 인터넷 차단 목록: 아직 가져가지 않음 · 광고 차단기에서 집중콩을 켜세요 · "+rules;
   long minutes=Math.max(0,(System.currentTimeMillis()-at)/60000);
-  boolean browser=Prefs.get(c).getBoolean("samsung_blocker_served_by_browser",false);
-  return "삼성 인터넷 차단 목록: "+(browser?"삼성 인터넷이":"다른 앱이")+" "+minutes+"분 전에 가져감 · "+rules;
+  return "삼성 인터넷 차단 목록: 삼성 인터넷이 "+minutes+"분 전에 가져감 · "+rules;
  }
 }
