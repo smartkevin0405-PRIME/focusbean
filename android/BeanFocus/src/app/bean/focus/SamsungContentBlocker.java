@@ -50,7 +50,7 @@ final class SamsungContentBlocker {
   if(!installed(c))return "삼성 인터넷 차단 목록: 삼성 인터넷이 없거나 광고 차단기를 지원하지 않음";
   long at=Prefs.get(c).getLong("samsung_blocker_served_wall",0);
   String rules=Prefs.shorts(c)?"쇼츠 규칙 켜짐":"쇼츠 차단 꺼짐 · 빈 목록";
-  if(at<=0)return "삼성 인터넷 차단 목록: 아직 가져가지 않음 · 광고 차단기에서 집중콩을 켜세요 · "+rules;
+  if(at<=0)return "삼성 인터넷 차단 목록: 아직 가져가지 않음 · 삼성 인터넷이 목록에 올리고 사용자가 켜야 시작돼요 · "+rules;
   long minutes=Math.max(0,(System.currentTimeMillis()-at)/60000);
   return "삼성 인터넷 차단 목록: 삼성 인터넷이 "+minutes+"분 전에 가져감 · "+rules;
  }
