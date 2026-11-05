@@ -2,6 +2,8 @@ package app.bean.focus;
 import java.util.*;
 /** OEM/UI/package values below: 실기기 확인 필요. No device dump has yet verified these candidates. */
 final class DeviceConstants {
+ /** Shown in the app and in diagnostics so a pasted report identifies the installed build. */
+ static final String BUILD="11-05b";
  static final String[] ADDRESS_FIELDS={"url_bar","location_bar_edit_text","location_bar_text_view","custom_tab_toolbar_url_bar_text","omnibarTextInput","mozac_browser_toolbar_url_view","mozac_browser_toolbar_url_edit_view","mozac_browser_toolbar_origin_view","toolbar_url","url","url_field","url_view","url_text","address_bar","address_field","address_text","omnibox"};
  static String[] fieldsFor(String pkg){
   if(pkg.startsWith("com.sec.android.app.sbrowser"))return new String[]{"location_bar_edit_text","location_bar_text_view","custom_tab_toolbar_url_bar_text","url_bar"};

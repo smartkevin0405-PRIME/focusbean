@@ -13,7 +13,7 @@ final class BrowserInspector {
  static final class Result {
   String url="",source="없음",documentUrl="",playerState="";
   boolean editing,playerShorts,playerChecked,nativeTruncated,playerTruncated,documentUnavailable,pageYouTube;
-  int nativeNodes,documentNodes,playerNodes,documentRefreshes,youtubeLinks,otherLinks,pageEvidence;
+  int nativeNodes,documentNodes,playerNodes,documentRefreshes,youtubeLinks,otherLinks,pageEvidence,webCandidates,refreshFailed,webOffscreen;
   // A document location wins over a stale toolbar regardless of sibling order.
   void document(String raw){String value=BrowserAddress.clean(raw);if(UrlRules.parse(value)!=null&&!documentKnown())documentUrl=value;}
   private boolean documentKnown(){return documentLocation(documentUrl);}
@@ -26,7 +26,7 @@ final class BrowserInspector {
   // Only a host class leaves this object: 1 YouTube, -1 another site, 0 unknown.
   int hostEvidence(){return addressHidden()?pageEvidence:UrlRules.isYouTube(url)?1:-1;}
   boolean shorts(){return UrlRules.isShorts(url)||playerShorts;}
-  String diagnostic(){return (confirmedHome()?"유튜브 홈 확인":addressHidden()&&pageYouTube?"주소창 숨김 · 유튜브 화면으로 판단":BrowserAddress.status(url))+(playerChecked&&addressHidden()?" · 화면 링크 유튜브 "+youtubeLinks+" / 기타 "+otherLinks:"")+"\n읽은 위치: "+source+" · 경로 "+(confirmedHome()?"루트 / 확인":BrowserAddress.hasPath(url)?"있음":"미확인")+(editing?" · 주소 입력 중":"")+(playerState.isEmpty()?"":"\n"+playerState)+"\n탐색 노드: UI "+nativeNodes+" · 문서 "+documentNodes+" · 플레이어 "+playerNodes+(nativeTruncated?"\n브라우저 UI 탐색 한도 도달":"")+(playerTruncated?"\n웹 플레이어 탐색 한도 도달":"");}
+  String diagnostic(){return (confirmedHome()?"유튜브 홈 확인":addressHidden()&&pageYouTube?"주소창 숨김 · 유튜브 화면으로 판단":BrowserAddress.status(url))+(playerChecked&&addressHidden()?" · 화면 링크 유튜브 "+youtubeLinks+" / 기타 "+otherLinks:"")+"\n읽은 위치: "+source+" · 경로 "+(confirmedHome()?"루트 / 확인":BrowserAddress.hasPath(url)?"있음":"미확인")+(editing?" · 주소 입력 중":"")+(playerState.isEmpty()?"":"\n"+playerState)+"\n탐색 노드: UI "+nativeNodes+" · 문서 "+documentNodes+" · 플레이어 "+playerNodes+"\n웹 루트 후보 "+webCandidates+" (갱신 실패 "+refreshFailed+" · 화면 밖 "+webOffscreen+(webCandidates==0?" · 브라우저가 웹 화면 노드를 주지 않았을 수 있어요":"")+")"+(nativeTruncated?"\n브라우저 UI 탐색 한도 도달":"")+(playerTruncated?"\n웹 플레이어 탐색 한도 도달":"");}
  }
  static Result read(AccessibilityNodeInfo root,String pkg){return read(root,pkg,true);}
  static Result read(AccessibilityNodeInfo root,String pkg,boolean allowPlayerFallback){
@@ -98,8 +98,13 @@ final class BrowserInspector {
  private static boolean refreshDocument(AccessibilityNodeInfo n,Result result){
   // Re-query only document roots, not every video/control node. This bypasses
   // stale Android snapshots after a page transition; provider caches may remain.
+  // Counted separately so a diagnostic can tell "no web node" from "rejected web node".
+  result.webCandidates++;
   if(result.documentRefreshes>=DOCUMENT_REFRESH_LIMIT){result.documentUnavailable=true;return false;}
-  result.documentRefreshes++;if(!n.refresh()||!onScreen(n)){result.documentUnavailable=true;return false;}return true;
+  result.documentRefreshes++;
+  if(!n.refresh()){result.refreshFailed++;result.documentUnavailable=true;return false;}
+  if(!onScreen(n)){result.webOffscreen++;result.documentUnavailable=true;return false;}
+  return true;
  }
  private static boolean nativeWrapper(AccessibilityNodeInfo n){
   if(!string(n.getExtras().getCharSequence("AccessibilityNodeInfo.chromeRole")).isEmpty()||!string(n.getExtras().getCharSequence(TARGET)).isEmpty())return false;

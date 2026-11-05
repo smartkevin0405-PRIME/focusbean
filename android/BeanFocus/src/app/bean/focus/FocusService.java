@@ -43,10 +43,19 @@ public class FocusService extends AccessibilityService {
  private final Map<String,PipDismissTracker> pipAttempts=new HashMap<>();
  private final Runnable windowCheck=()->safe("창 변경 점검",()->checkBlockedWindows());
  private long lastYoutubeToast=-10000;
- private long lastYouTubeScan=-1000,lastGuard=-2000,dumpUntil,dumpAt,dumpExpires;private String dump="아직 수집한 화면 ID가 없어요",dumpPackage="";
- static boolean requestDump(){if(current==null)return false;current.dumpUntil=SystemClock.elapsedRealtime()+30000;current.dumpAt=0;current.dumpExpires=0;current.dump="";current.dumpPackage="";return true;}
- static String viewIds(){if(current==null)return "서비스 연결이 필요해요";FocusService s=current;if(SystemClock.elapsedRealtime()>s.dumpExpires){s.dump="";s.dumpPackage="";return "수집한 ID가 없거나 5분이 지나 지워졌어요";}return "수집 앱: "+s.dumpPackage+"\n텍스트·주소는 포함하지 않아요.\n\n"+s.dump;}
- private void captureIds(AccessibilityNodeInfo root,String pkg){long now=SystemClock.elapsedRealtime();if(now>dumpUntil||now-dumpAt<1000||!(YouTubeInspector.isPackage(pkg)||catalog.browser(pkg)||AppCatalog.webHost(pkg)||SettingsGuard.surface(pkg)))return;dump=ViewIdSnapshot.collect(root);dumpPackage=pkg;dumpAt=now;dumpExpires=now+300000;}
+ private long lastYouTubeScan=-1000,lastGuard=-2000,dumpUntil,dumpAt,dumpExpires,structureAt;private String dump="아직 수집한 화면 ID가 없어요",dumpPackage="",structure="";
+ static boolean requestDump(){if(current==null)return false;current.dumpUntil=SystemClock.elapsedRealtime()+30000;current.dumpAt=0;current.dumpExpires=0;current.dump="";current.dumpPackage="";current.structure="";current.structureAt=0;return true;}
+ static String viewIds(){if(current==null)return "서비스 연결이 필요해요";FocusService s=current;if(SystemClock.elapsedRealtime()>s.dumpExpires){s.dump="";s.dumpPackage="";s.structure="";return "수집한 ID가 없거나 5분이 지나 지워졌어요";}return "수집 앱: "+s.dumpPackage+"\n텍스트·주소·설명은 포함하지 않아요.\n\n"+s.dump+(s.structure.isEmpty()?"":"\n--- 화면 구조 ---\n"+s.structure);}
+ private void captureIds(AccessibilityNodeInfo root,String pkg){long now=SystemClock.elapsedRealtime();if(now>dumpUntil||now-dumpAt<1000||!(YouTubeInspector.isPackage(pkg)||catalog.browser(pkg)||AppCatalog.webHost(pkg)||SettingsGuard.surface(pkg)))return;dump=ViewIdSnapshot.collect(root);dumpPackage=pkg;dumpAt=now;dumpExpires=now+300000;if(now-structureAt>=3000){structure=StructureSnapshot.collect(root)+windowSummary(pkg);structureAt=now;}}
+ // Window kinds of the browser only; other apps' windows are just counted.
+ private String windowSummary(String pkg){
+  StringBuilder out=new StringBuilder();int others=0;List<AccessibilityWindowInfo> windows=getWindows();
+  try{for(AccessibilityWindowInfo w:windows){
+   AccessibilityNodeInfo r=w.getRoot();boolean same=false;if(r!=null)try{same=pkg.equals(packageOf(r));}finally{r.recycle();}
+   if(same)out.append("창 종류 ").append(w.getType()).append(" · 활성 ").append(w.isActive()).append(" · 포커스 ").append(w.isFocused()).append(" · 층 ").append(w.getLayer()).append('\n');else others++;
+  }}finally{for(AccessibilityWindowInfo w:windows)w.recycle();}
+  return out.append("다른 창 ").append(others).append("개\n").toString();
+ }
  private void writeRecord(String phase,Runnable task){Handler h=recordHandler;if(h!=null)h.post(()->safe(phase,task));}
  private void growthTick(){if(growth==null)return;long e=SystemClock.elapsedRealtime(),w=System.currentTimeMillis();boolean on=GrowthTracker.eligible(this);GrowthTracker tracker=growth;writeRecord("성장 기록",()->tracker.tickAt(e,w,on));}
  private void sampleWeb(String kind){if(webSession==null)return;long e=SystemClock.elapsedRealtime(),w=System.currentTimeMillis();TelemetrySession session=webSession;writeRecord("웹 관측 기록",()->session.sampleAt(kind,"",e,w));}
@@ -57,7 +66,7 @@ public class FocusService extends AccessibilityService {
  static String diagnostics(Context c){
   if(current==null){String enabled=android.provider.Settings.Secure.getString(c.getContentResolver(),android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);boolean allowed=enabled!=null&&enabled.contains(c.getPackageName()+"/");return allowed?"접근성 설정은 켜짐 · 서비스 연결은 확인 안 됨. 접근성을 껐다 켜주세요.":"접근성 설정에서 집중콩을 켜주세요.";}
   FocusService s=current;long age=Math.max(0,(SystemClock.elapsedRealtime()-s.beat)/1000);
-  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+"\n"+SamsungContentBlocker.status(c)+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
+  return "서비스 연결됨 · 빌드 "+DeviceConstants.BUILD+" · 점검 "+age+"초 전\n마지막 감지: "+(Prefs.shorts(c)?s.browserState:"쇼츠 차단이 꺼져 있어 브라우저를 검사하지 않아요 (차단 켜기·유튜브 쇼츠 차단 스위치를 확인하세요)")+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+"\n"+SamsungContentBlocker.status(c)+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
  }
  private int newPackageCount(){android.content.SharedPreferences p=Prefs.get(this);String id=p.getString("lock_id","");return FocusLock.active(this)&&!id.isEmpty()&&id.equals(p.getString("lock_new_pkgs_id",""))?p.getStringSet("lock_new_pkgs",Collections.emptySet()).size():0;}
  private void safe(String phase,Runnable work){try{work.run();}catch(RuntimeException e){String failure=phase+" · "+e.getClass().getSimpleName();if(Looper.myLooper()==Looper.getMainLooper()){errors++;errorState=failure;}else handler.post(()->{errors++;errorState=failure;});}}
@@ -249,7 +258,7 @@ public class FocusService extends AccessibilityService {
   }finally{root.recycle();}
  }
  private void sampleExternal(){
-  beat=SystemClock.elapsedRealtime();checks++;if(dumpExpires>0&&beat>dumpExpires){dump="";dumpPackage="";dumpExpires=0;}safe("브라우저 목록",()->catalog.refresh());
+  beat=SystemClock.elapsedRealtime();checks++;if(dumpExpires>0&&beat>dumpExpires){dump="";dumpPackage="";structure="";dumpExpires=0;}safe("브라우저 목록",()->catalog.refresh());
   if(beat-reportAt>30000||youtubeState.isEmpty()){youtubeState=AppCatalog.youtubeStatus(this);NetworkTime.now();reportAt=beat;}
   safe("삼성 인터넷 차단 목록",()->SamsungContentBlocker.sync(this));
   if(!awake()){shield.hide();sampleWeb(null);return;}
@@ -290,7 +299,7 @@ public class FocusService extends AccessibilityService {
  }
 
  @Override public void onInterrupt(){clickToken++;cancelBrowserScan();browserBudget.reset();stopWeb();if(shield!=null)safe("가림 해제",()->shield.hide());}
- private void cleanup(){recentClose.cancel();shieldOwners.clear();dump="";dumpPackage="";dumpExpires=0;dumpUntil=0;handler.removeCallbacksAndMessages(null);clickToken++;if(shield!=null)safe("가림 해제",()->shield.hide());GrowthTracker oldGrowth=growth;TelemetrySession oldSession=webSession;writeRecord("관측 정리",()->{if(oldGrowth!=null)oldGrowth.stop();if(oldSession!=null)oldSession.stop();});if(recordThread!=null){recordThread.quitSafely();recordThread=null;recordHandler=null;}if(receiverRegistered){safe("앱 감지 해제",()->unregisterReceiver(packageReceiver));receiverRegistered=false;}if(current==this)current=null;}
+ private void cleanup(){recentClose.cancel();shieldOwners.clear();dump="";dumpPackage="";structure="";dumpExpires=0;dumpUntil=0;handler.removeCallbacksAndMessages(null);clickToken++;if(shield!=null)safe("가림 해제",()->shield.hide());GrowthTracker oldGrowth=growth;TelemetrySession oldSession=webSession;writeRecord("관측 정리",()->{if(oldGrowth!=null)oldGrowth.stop();if(oldSession!=null)oldSession.stop();});if(recordThread!=null){recordThread.quitSafely();recordThread=null;recordHandler=null;}if(receiverRegistered){safe("앱 감지 해제",()->unregisterReceiver(packageReceiver));receiverRegistered=false;}if(current==this)current=null;}
  @Override public boolean onUnbind(Intent i){cleanup();return super.onUnbind(i);}
  @Override public void onDestroy(){cleanup();super.onDestroy();}
 }

@@ -46,8 +46,8 @@ try {
         @('tests/fakes/app/bean/focus/AnalyticsDb.java', 'src/app/bean/focus/TelemetrySession.java')) @('TelemetrySessionTest')
     Run-Suite 'browser' ((Source-Files 'tests/browser_fakes/android' @('os/Bundle', 'graphics/Rect', 'view/accessibility/AccessibilityNodeInfo')) +
         (Source-Files 'src/app/bean/focus' @('BrowserInspector', 'BrowserPlayerInspector', 'BrowserScanPolicy', 'WebShortsRules', 'BrowserAddress', 'UrlRules',
-        'BlockPolicy', 'YouTubeInspector', 'SettingsGuard', 'SettingsNodeCollector', 'DeviceConstants', 'ViewIdSnapshot', 'RecentsInspector'))) @(
-        'BrowserInspectorTest', 'YouTubeSettingsTest', 'SettingsGuardDecideTest', 'BrowserPlayerTest', 'BrowserNavigationTest', 'BrowserHiddenAddressTest')
+        'BlockPolicy', 'YouTubeInspector', 'SettingsGuard', 'SettingsNodeCollector', 'DeviceConstants', 'ViewIdSnapshot', 'StructureSnapshot', 'RecentsInspector'))) @(
+        'BrowserInspectorTest', 'YouTubeSettingsTest', 'SettingsGuardDecideTest', 'BrowserPlayerTest', 'BrowserNavigationTest', 'BrowserHiddenAddressTest', 'BrowserDiagnosticsTest')
     $nodeTests = @('guard_test.cjs', 'channel_test.cjs', 'stats_test.cjs', 'stats_dashboard_test.cjs')
     foreach ($test in $nodeTests) { Invoke-Checked $node @("tests/$test") }
     Write-Output "PASS: $script:javaTests Java test programs and $($nodeTests.Count) Node test programs. Android node fakes do not replace device tests."

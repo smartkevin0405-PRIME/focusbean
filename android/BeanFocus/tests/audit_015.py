@@ -69,6 +69,15 @@ assert 'return null;}' in provider  # query exposes no rows
 rules = (src / 'ShortsFilterRules.java').read_text(encoding='utf-8-sig')
 assert '"||youtube.com/shorts"' in rules and '"||youtube.com/youtubei/v1/reel/"' in rules
 assert 'watch' not in rules.split('static final String[] BLOCK=')[1].split(';')[0]
+# Structure diagnostics: explicit 30s request only, and the collector reads no page text/addresses.
+capture = body('void captureIds(')
+assert 'now>dumpUntil' in capture and capture.index('now>dumpUntil') < capture.index('StructureSnapshot.collect(')
+structure = (src / 'StructureSnapshot.java').read_text(encoding='utf-8-sig')
+for forbidden in ('getText(', 'getContentDescription(', 'getPackageName(', 'getWindowId(', 'openFile'):
+    assert forbidden not in structure, forbidden
+assert 'private static final Set<String> ROLES' in structure and 'return "html"' in structure
+# The shorts-off state must be visible in diagnostics instead of looking like "never scanned".
+assert 'Prefs.shorts(c)?s.browserState' in body('static String diagnostics(')
 manifest = (root / 'AndroidManifest.xml').read_text(encoding='utf-8-sig')
 assert 'android:authorities="app.bean.focus.contentBlocker.contentProvider" android:exported="true"' in manifest
 assert 'com.samsung.android.sbrowser.contentBlocker.interfaceVersion" android:value="API_1.0"' in manifest

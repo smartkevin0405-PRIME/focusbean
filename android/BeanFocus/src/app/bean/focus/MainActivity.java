@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
   body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(22),dp(22),dp(22),dp(30));sc.addView(body);setContentView(sc);
   TextView title=text("집중콩",32,Color.rgb(29,60,49));title.setTypeface(null,Typeface.BOLD);body.addView(title);
   body.addView(text("강의는 보고, 쇼츠는 멈추고.",17,Color.DKGRAY));
-  body.addView(text("0.15 베타 · 삼성 인터넷 쇼츠 차단 보강",12,Color.GRAY));
+  body.addView(text("0.15 베타 · 삼성 인터넷 쇼츠 차단 보강 · 빌드 "+DeviceConstants.BUILD,12,Color.GRAY));
   LinearLayout c=card();TextView petTitle=text("프라임콩  ·  PrimeBean",21,Color.rgb(29,60,49));petTitle.setTypeface(null,Typeface.BOLD);c.addView(petTitle);
   c.addView(text("네 집중 곁에서 자라는 콩 연구자",13,Color.GRAY));petView=new PetView(this);c.addView(petView,new LinearLayout.LayoutParams(-1,dp(230)));
   petStatus=text("",15,Color.DKGRAY);c.addView(petStatus);petProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);petProgress.setMax(1000);c.addView(petProgress,new LinearLayout.LayoutParams(-1,dp(12)));petSpeech=text("",14,Color.rgb(36,116,92));c.addView(petSpeech);
@@ -82,8 +82,8 @@ public class MainActivity extends Activity {
   c=card();c.addView(text("03  접근성 연결",20,Color.rgb(29,60,49)));status=text("",14,Color.DKGRAY);c.addView(status);
   c.addView(text("다른 앱의 게임·웹 쇼츠 차단에 필요합니다. 지원 브라우저 주소와 선택한 게임의 실행을 기기 안에서만 확인합니다. 런처 아이콘 없는 앱도 조회하기 위해 전체 패키지 조회 권한을 사용하며 설치 이벤트를 기기 안에 기록합니다. 전체 주소는 기록하지 않습니다. 이용 시간·채널 분류·차단 통계는 기기에 저장하고 서버로 전송하지 않습니다.",14,Color.DKGRAY));
   c.addView(text("삼성 기기: 설정 → 배터리 → 백그라운드 사용 제한 → 절전 예외 앱에 집중콩을 추가하세요. 앱 정보 → 배터리에서 ‘제한 없음’도 확인하세요. 접근성 서비스는 일반 앱의 실행 중 목록과 표시 방식이 다르므로 위의 연결·점검 시각으로 확인하세요.",12,Color.GRAY));
-  button(c,"화면 view ID 수집 예약 · 30초",v->{boolean ready=FocusService.requestDump();Toast.makeText(this,ready?"30초 안에 유튜브·브라우저·설정 화면으로 이동하세요. 그동안 표시된 ID를 수집합니다.":"접근성을 먼저 연결하세요",Toast.LENGTH_LONG).show();});
-  button(c,"수집된 view ID 보기",v->{TextView dump=text(FocusService.viewIds(),12,Color.DKGRAY);dump.setTextIsSelectable(true);ScrollView idScroll=new ScrollView(this);idScroll.addView(dump);new AlertDialog.Builder(this).setTitle("최근 화면 ID · 5분 뒤 지움").setView(idScroll).setPositiveButton("닫기",null).show();});
+  button(c,"화면 view ID 수집 예약 · 30초",v->{boolean ready=FocusService.requestDump();Toast.makeText(this,ready?"30초 안에 유튜브·브라우저·설정 화면으로 이동해 끝날 때까지 머무르세요. 화면 ID와 구조(텍스트·주소·설명 제외)를 수집합니다.":"접근성을 먼저 연결하세요",Toast.LENGTH_LONG).show();});
+  button(c,"수집된 view ID 보기",v->{TextView dump=text(FocusService.viewIds(),12,Color.DKGRAY);dump.setTextIsSelectable(true);ScrollView idScroll=new ScrollView(this);idScroll.addView(dump);new AlertDialog.Builder(this).setTitle("최근 화면 ID·구조 · 5분 뒤 지움").setView(idScroll).setPositiveButton("닫기",null).show();});
   button(c,"진단 복사 · 주소·제목 제외",v->{ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clipboard!=null){clipboard.setPrimaryClip(ClipData.newPlainText("집중콩 진단",FocusService.diagnostics(this)));Toast.makeText(this,"진단을 복사했어요",Toast.LENGTH_SHORT).show();}});
   button(c,"앱 업데이트 · 휴대폰에서 설치",v->startActivity(new Intent(this,UpdateActivity.class)));
   button(c,"접근성 설정 열기",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
