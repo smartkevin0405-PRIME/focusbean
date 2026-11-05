@@ -47,9 +47,33 @@ assert 'latest.getWindowId()!=expectedWindow' in body('boolean globalActionFor('
 assert service.count('BrowserInspector.read(') == 1
 assert 'confirmAction||browserBudget.navigating(started)' in body('BrowserInspector.Result readBrowser(')
 assert '.commit()' not in (src / 'FocusLock.java').read_text(encoding='utf-8-sig') + (src / 'RemovalAccess.java').read_text(encoding='utf-8-sig')
+# Handoff 1: a briefly missing root keeps a bounded retry; another app/window ends it.
+check = service[service.index('Runnable browserCheck='):service.index('private void retryMissingRoot(')]
+assert 'if(root==null){retryMissingRoot(p,window);return;}' in check and 'if(root==null){browserBudget.endNavigation()' not in check
+retry = body('void retryMissingRoot(')
+assert 'browserBudget.missingRootDelay(' in retry and 'frontMayBe(p,window)' in retry and 'browserBudget.endNavigation()' in retry
+# Hidden toolbar: only a host class (YouTube/other/unknown) is remembered per window.
+reader = body('BrowserInspector.Result readBrowser(')
+assert 'browserBudget.host()' in reader and 'browserBudget.rememberHost(r.hostEvidence())' in reader
+# Handoff 6: native YouTube throttles before tree/window queries and keeps its window for BACK/HOME.
+event = body('void handleEvent(')
+assert event.index('youtubeEventDue(p)') < event.index('activeRoot(p,-1)')
+youtube = body('void inspectYouTube(')
+assert 'globalActionFor(GLOBAL_ACTION_BACK,p,window)' in youtube and 'globalActionFor(GLOBAL_ACTION_HOME,p,window)' in youtube
+assert 'globalActionFor(GLOBAL_ACTION_BACK,p)' not in youtube and 'globalActionFor(GLOBAL_ACTION_HOME,p)' not in youtube
+# Samsung Internet content blocker: read-only provider, sync on state change, Shorts-only rules.
+assert 'SamsungContentBlocker.sync(this)' in body('void sampleExternal(')
+provider = (src / 'ShortsFilterProvider.java').read_text(encoding='utf-8-sig')
+assert "mode.indexOf('w')>=0" in provider and 'MODE_READ_ONLY' in provider and 'MODE_READ_WRITE' not in provider
+assert 'return null;}' in provider  # query exposes no rows
+rules = (src / 'ShortsFilterRules.java').read_text(encoding='utf-8-sig')
+assert '"||youtube.com/shorts"' in rules and '"||youtube.com/youtubei/v1/reel/"' in rules
+assert 'watch' not in rules.split('static final String[] BLOCK=')[1].split(';')[0]
 manifest = (root / 'AndroidManifest.xml').read_text(encoding='utf-8-sig')
+assert 'android:authorities="app.bean.focus.contentBlocker.contentProvider" android:exported="true"' in manifest
+assert 'com.samsung.android.sbrowser.contentBlocker.interfaceVersion" android:value="API_1.0"' in manifest
 assert 'versionCode="15"' in manifest and 'versionName="0.15-beta"' in manifest
 assert 'QUERY_ALL_PACKAGES' in manifest and 'WRITE_SECURE_SETTINGS' not in manifest
 for path in src.glob('*.java'):
     assert 'androidx.' not in path.read_text(encoding='utf-8-sig')
-print('0.15 source invariants: passed (navigation routing, action evidence/window guards, PiP, settings, persistence, manifest)')
+print('0.15 source invariants: passed (navigation routing, missing-root retry, host memory, native YouTube window guards, Samsung content blocker, PiP, settings, persistence, manifest)')

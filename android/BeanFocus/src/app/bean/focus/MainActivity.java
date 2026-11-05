@@ -16,7 +16,7 @@ import java.util.*;
 public class MainActivity extends Activity {
  private LinearLayout body;
  private TextView status, gameSummary;
- private TextView lockStatus,removalStatus;
+ private TextView lockStatus,removalStatus,samsungStatus;
  private TextView petStatus,petSpeech;
  private ProgressBar petProgress;
  private PetView petView;
@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
   body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(22),dp(22),dp(22),dp(30));sc.addView(body);setContentView(sc);
   TextView title=text("집중콩",32,Color.rgb(29,60,49));title.setTypeface(null,Typeface.BOLD);body.addView(title);
   body.addView(text("강의는 보고, 쇼츠는 멈추고.",17,Color.DKGRAY));
-  body.addView(text("0.13 베타 · 삼성 인터넷 쇼츠 화면 감지",12,Color.GRAY));
+  body.addView(text("0.15 베타 · 삼성 인터넷 쇼츠 차단 보강",12,Color.GRAY));
   LinearLayout c=card();TextView petTitle=text("프라임콩  ·  PrimeBean",21,Color.rgb(29,60,49));petTitle.setTypeface(null,Typeface.BOLD);c.addView(petTitle);
   c.addView(text("네 집중 곁에서 자라는 콩 연구자",13,Color.GRAY));petView=new PetView(this);c.addView(petView,new LinearLayout.LayoutParams(-1,dp(230)));
   petStatus=text("",15,Color.DKGRAY);c.addView(petStatus);petProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);petProgress.setMax(1000);c.addView(petProgress,new LinearLayout.LayoutParams(-1,dp(12)));petSpeech=text("",14,Color.rgb(36,116,92));c.addView(petSpeech);
@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
   newAppsSwitch=new Switch(this);newAppsSwitch.setText("잠금 후 새로 설치된 앱도 차단");newAppsSwitch.setChecked(Prefs.get(this).getBoolean("block_new_apps",false));c.addView(newAppsSwitch);newAppsSwitch.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("block_new_apps",on).apply();FocusService.reload();});
   otherProfilesSwitch=new Switch(this);otherProfilesSwitch.setText("잠금 중 다른 프로필 앱도 차단");otherProfilesSwitch.setChecked(Prefs.get(this).getBoolean("block_other_profiles",true));c.addView(otherProfilesSwitch);otherProfilesSwitch.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("block_other_profiles",on).apply();FocusService.reload();});
   c.addView(text("선택 옵션입니다. 잠금 시작 시각과 앱의 최초 설치 시각을 비교해 새 일반 앱을 제한합니다. 시스템 앱과 전화·긴급 기능은 제외합니다. 조회할 수 없는 다른 프로필 앱 창은 선택한 옵션으로 차단하지만, 보안 폴더의 창·이벤트 자체가 보이지 않으면 차단할 수 없습니다.",12,Color.GRAY));
-  c.addView(text("이 옵션은 미지원 브라우저만 제한합니다. 삼성 인터넷 등 지원 브라우저에서 유튜브 도메인만 읽히는 경우, 웹 문서 안의 쇼츠 플레이어 버튼 배치도 확인합니다. 주소·쇼츠 링크·플레이어 신호를 모두 읽지 못하면 감지가 누락될 수 있습니다. 일반 유튜브는 도메인만 보인다는 이유로 차단하지 않습니다.",12,Color.GRAY));
+  c.addView(text("이 옵션은 미지원 브라우저만 제한합니다. 삼성 인터넷 등 지원 브라우저에서 유튜브 도메인만 읽히거나 주소창이 숨겨진 경우, 화면 안 링크로 유튜브인지 확인한 뒤 쇼츠 플레이어 버튼 배치를 확인합니다. 주소·쇼츠 링크·플레이어 신호를 모두 읽지 못하면 감지가 누락될 수 있습니다. 일반 유튜브는 도메인만 보인다는 이유로 차단하지 않습니다.",12,Color.GRAY));
   c.addView(text("경로가 확인된 일반 영상은 허용합니다. 내장 웹 화면에서 새 채널을 만나면 강의/여가 분류를 물어봅니다.",14,Color.DKGRAY));
   c=card();c.addView(text("집중 잠금 · 조기 해제는 10분 뒤",20,Color.rgb(29,60,49)));
   lockStatus=text("",16,Color.DKGRAY);c.addView(lockStatus);
@@ -73,6 +73,11 @@ public class MainActivity extends Activity {
   c.addView(text("주소창의 텍스트·설명, 클릭한 쇼츠 링크와 웹 쇼츠 플레이어의 버튼 배치를 확인합니다. 쇼츠에서 뒤로 이동한 뒤에도 쇼츠 주소나 화면 신호가 남으면 홈으로 이동합니다. 주소창 숨김·인앱 화면·브라우저 변경에 따라 감지가 누락될 수 있습니다.",14,Color.DKGRAY));
   button(c,"쇼츠 차단 웹 화면 열기",v->startActivity(new Intent(this,StudyActivity.class)));
   c.addView(text("앱 안의 웹 화면은 별도로 쇼츠 링크·화면을 차단합니다. 로그인 없이 사용하세요. 유튜브 화면 변경에 따라 보완이 필요할 수 있습니다.",12,Color.GRAY));
+  c=card();c.addView(text("삼성 인터넷 쇼츠 차단기",20,Color.rgb(29,60,49)));
+  c.addView(text("삼성 인터넷 설정의 광고 차단기에서 집중콩을 켜면, 브라우저가 쇼츠 페이지와 쇼츠 재생 요청만 직접 막습니다. 일반 영상·검색·홈·다른 사이트는 막지 않습니다. 화면 인식과 별도로 동작하므로 주소창이 숨겨져도 적용됩니다.",14,Color.DKGRAY));
+  samsungStatus=text("",13,Color.rgb(36,116,92));c.addView(samsungStatus);
+  button(c,"삼성 인터넷 광고 차단기 설정 열기",v->{if(!SamsungContentBlocker.openSettings(this))Toast.makeText(this,"삼성 인터넷이 없거나 광고 차단기 설정을 열 수 없어요",Toast.LENGTH_LONG).show();});
+  c.addView(text("목록에서 집중콩을 켜세요. 삼성 인터넷 버전에 따라 일부 규칙이 적용되지 않을 수 있고, 삼성 인터넷 설정에서 끄면 이 보호도 꺼집니다. 쇼츠 차단 스위치를 끄면 빈 목록을 전달합니다.",12,Color.GRAY));
   c=card();c.addView(text("02  게임 차단",20,Color.rgb(29,60,49)));gameSummary=text("",14,Color.DKGRAY);c.addView(gameSummary);gamesButton=button(c,"차단할 게임 선택",v->chooseGames());
   c=card();c.addView(text("03  접근성 연결",20,Color.rgb(29,60,49)));status=text("",14,Color.DKGRAY);c.addView(status);
   c.addView(text("다른 앱의 게임·웹 쇼츠 차단에 필요합니다. 지원 브라우저 주소와 선택한 게임의 실행을 기기 안에서만 확인합니다. 런처 아이콘 없는 앱도 조회하기 위해 전체 패키지 조회 권한을 사용하며 설치 이벤트를 기기 안에 기록합니다. 전체 주소는 기록하지 않습니다. 이용 시간·채널 분류·차단 통계는 기기에 저장하고 서버로 전송하지 않습니다.",14,Color.DKGRAY));
@@ -97,7 +102,7 @@ public class MainActivity extends Activity {
   removalStatus.setText(!guarded?"삭제 대기 없음 · 앱 정보에서 삭제 가능":allowed?"집중콩 삭제·앱 정보 허용 중 · "+FocusLock.format(RemovalAccess.allowedRemaining(this))+" 남음":ready?"대기 완료 · 아래 버튼을 눌러 5분간 허용하세요":pending?"삭제 허용까지 "+FocusLock.format(RemovalAccess.remaining(this)):"삭제를 원하면 10분 대기를 시작하세요");
   removalButton.setEnabled(!guarded||allowed||ready||!pending);removalButton.setText(!guarded||allowed?"앱 정보 열기 · 삭제 가능":ready?"삭제 진행 · 5분 허용":pending?"삭제 허용 대기 중":"삭제 허용 요청 · 10분 대기");cancelRemovalButton.setVisibility(guarded&&(pending||allowed)?View.VISIBLE:View.GONE);
  }
- private void refresh(){refreshRemoval();if(status!=null)status.setText(FocusService.diagnostics(this));if(gameSummary!=null)gameSummary.setText("선택한 앱 "+Prefs.games(this).size()+"개 · 잠금 중에는 Android가 게임으로 분류한 앱도 자동 차단합니다.");
+ private void refresh(){refreshRemoval();SamsungContentBlocker.sync(this);if(samsungStatus!=null)samsungStatus.setText(SamsungContentBlocker.status(this));if(status!=null)status.setText(FocusService.diagnostics(this));if(gameSummary!=null)gameSummary.setText("선택한 앱 "+Prefs.games(this).size()+"개 · 잠금 중에는 Android가 게임으로 분류한 앱도 자동 차단합니다.");
   if(petStatus!=null){long xp=GrowthTracker.xp(this);int level=GrowthRules.level(xp);String next=level<4?"다음 성장까지 "+(GrowthRules.THRESHOLDS[level+1]-xp)+" XP":"모든 성장 단계 달성 · 연구는 계속!";petStatus.setText("Lv."+(level+1)+" "+GrowthRules.NAMES[level]+"  ·  "+xp+" XP\n"+next);long base=GrowthRules.THRESHOLDS[level];petProgress.setProgress(level==4?1000:(int)Math.min(1000,(xp-base)*1000/(GrowthRules.THRESHOLDS[level+1]-base)));petSpeech.setText(FocusService.connected()&&GrowthTracker.eligible(this)?"“한 번에 한 문제씩. 지금도 조금씩 자라고 있어.”":"“기다리고 있을게. 연결을 켜면 다시 함께 시작하자.”");}
   if(lockStatus==null)return;boolean locked=FocusLock.active(this),requested=FocusLock.requested(this);syncing=true;enabledSwitch.setChecked(Prefs.enabled(this));shortsSwitch.setChecked(Prefs.get(this).getBoolean("shorts",true));strictSwitch.setChecked(Prefs.get(this).getBoolean("strict_locked_web",true));guardSwitch.setChecked(Prefs.get(this).getBoolean("guard_locked_settings",true));newAppsSwitch.setChecked(Prefs.get(this).getBoolean("block_new_apps",false));otherProfilesSwitch.setChecked(Prefs.get(this).getBoolean("block_other_profiles",true));syncing=false;enabledSwitch.setEnabled(!locked);shortsSwitch.setEnabled(!locked);strictSwitch.setEnabled(!locked);guardSwitch.setEnabled(!locked);newAppsSwitch.setEnabled(!locked);otherProfilesSwitch.setEnabled(!locked);gamesButton.setEnabled(!locked);startLockButton.setVisibility(locked?View.GONE:View.VISIBLE);unlockButton.setVisibility(locked?View.VISIBLE:View.GONE);cancelUnlockButton.setVisibility(requested?View.VISIBLE:View.GONE);
   String message="설정 잠금 꺼짐 · 차단 설정 변경 가능";
