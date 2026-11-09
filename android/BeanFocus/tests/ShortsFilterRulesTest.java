@@ -25,6 +25,9 @@ public class ShortsFilterRulesTest {
   // Never a whole-domain or document-wide rule; cosmetic rules stay on YouTube.
   for(String rule:on){ok(!rule.equals("||youtube.com^")&&!rule.equals("||youtube.com/")&&!rule.contains("$"));if(rule.contains("##"))ok(rule.startsWith("youtube.com##")&&!rule.contains(":has"));}
   ok(ShortsFilterRules.changed(-1,true));ok(ShortsFilterRules.changed(-1,false));ok(ShortsFilterRules.changed(0,true));ok(ShortsFilterRules.changed(1,false));ok(!ShortsFilterRules.changed(1,true));ok(!ShortsFilterRules.changed(0,false));
+  // Re-announce on state change, at first sync, and once the interval passes; not on every beat.
+  long h=ShortsFilterRules.REANNOUNCE_MS;ok(ShortsFilterRules.announce(-1,true,0,5));ok(ShortsFilterRules.announce(1,false,1000,1001));
+  ok(!ShortsFilterRules.announce(1,true,1000,1000+2000));ok(!ShortsFilterRules.announce(1,true,1000,1000+h-1));ok(ShortsFilterRules.announce(1,true,1000,1000+h));ok(ShortsFilterRules.announce(0,false,1000,1000+h+1));
   System.out.println("Samsung Internet Shorts filter list: "+checks+" checks passed");
  }
 }

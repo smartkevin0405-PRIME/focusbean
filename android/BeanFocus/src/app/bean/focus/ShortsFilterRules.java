@@ -22,4 +22,8 @@ final class ShortsFilterRules {
  }
  /** last: -1 never sent in this process, 0 off, 1 on. */
  static boolean changed(int last,boolean active){return last!=(active?1:0);}
+ /** Repeat the update notice so Samsung Internet re-reads the list after its own updates or restarts. */
+ static final long REANNOUNCE_MS=6L*60*60*1000;
+ /** lastAt and now are elapsed-realtime millis of this process. */
+ static boolean announce(int last,boolean active,long lastAt,long now){return changed(last,active)||now-lastAt>=REANNOUNCE_MS;}
 }

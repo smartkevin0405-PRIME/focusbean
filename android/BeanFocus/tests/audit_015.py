@@ -72,6 +72,10 @@ assert 'watch' not in rules.split('static final String[] BLOCK=')[1].split(';')[
 manifest = (root / 'AndroidManifest.xml').read_text(encoding='utf-8-sig')
 assert 'android:authorities="app.bean.focus.contentBlocker.contentProvider" android:exported="true"' in manifest
 assert 'com.samsung.android.sbrowser.contentBlocker.interfaceVersion" android:value="API_1.0"' in manifest
+assert 'com.samsung.android.sbrowser.permission.CONTENTBLOCKER' in manifest
+blocker = (src / 'SamsungContentBlocker.java').read_text(encoding='utf-8-sig')
+assert 'ShortsFilterRules.announce(' in blocker and 'samsung_blocker_notified_wall' in blocker
+assert 'SamsungContentBlocker.browserChanged(' in (src / 'FocusService.java').read_text(encoding='utf-8-sig')
 assert 'versionCode="15"' in manifest and 'versionName="0.15-beta"' in manifest
 assert 'QUERY_ALL_PACKAGES' in manifest and 'WRITE_SECURE_SETTINGS' not in manifest
 for path in src.glob('*.java'):
