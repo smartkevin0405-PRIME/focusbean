@@ -3,7 +3,7 @@ import android.os.Bundle;
 import java.util.*;
 /** Small shared-data / owned-handle fake; detects leaked and recycled node handles. */
 public class AccessibilityNodeInfo {
- private static final class Data {String pkg="com.google.android.youtube";String id,text,description,cls="android.view.View",refreshUrl;boolean visible=true,editable,focused,clickable,refreshable=true;int left,top,right,bottom,childReads,refreshes;Bundle extras=new Bundle();Data parent;List<Data> children=new ArrayList<>();}
+ private static final class Data {String pkg="com.google.android.youtube";String id,text,description,cls="android.view.View",refreshUrl,refreshCls;List<Data> refreshChildren=new ArrayList<>();boolean visible=true,editable,focused,clickable,refreshable=true;int left,top,right,bottom,childReads,refreshes;Bundle extras=new Bundle();Data parent;List<Data> children=new ArrayList<>();}
  private final Data data;private boolean recycled;public static int handles,queries,childReads,queryNodes;
  public static void resetCounts(){queries=0;childReads=0;queryNodes=0;}
  public int childReads(){check();return data.childReads;}
@@ -14,7 +14,9 @@ public class AccessibilityNodeInfo {
  public AccessibilityNodeInfo id(String v){data.id=v;return this;}public AccessibilityNodeInfo text(String v){data.text=v;return this;}public AccessibilityNodeInfo description(String v){data.description=v;return this;}public AccessibilityNodeInfo cls(String v){data.cls=v;return this;}
  public AccessibilityNodeInfo visible(boolean v){data.visible=v;return this;}public AccessibilityNodeInfo editing(){data.editable=true;data.focused=true;return this;}
  public AccessibilityNodeInfo refreshedUrl(String v){data.refreshUrl=v;return this;}public AccessibilityNodeInfo refreshable(boolean v){data.refreshable=v;return this;}
- public int refreshes(){check();return data.refreshes;}public boolean refresh(){check();data.refreshes++;if(data.refreshUrl!=null)data.extras.putCharSequence("url",data.refreshUrl);return data.refreshable;}
+ public int refreshes(){check();return data.refreshes;}public boolean refresh(){check();data.refreshes++;if(data.refreshUrl!=null)data.extras.putCharSequence("url",data.refreshUrl);if(data.refreshable){if(data.refreshCls!=null)data.cls=data.refreshCls;for(Data c:data.refreshChildren){data.children.add(c);c.parent=data;}data.refreshChildren.clear();}return data.refreshable;}
+ /** Simulates a stale cached view that becomes a Chromium page once re-read. */
+ public AccessibilityNodeInfo refreshedClass(String v){data.refreshCls=v;return this;}public AccessibilityNodeInfo refreshedChild(AccessibilityNodeInfo n){data.refreshChildren.add(n.data);return this;}
  public AccessibilityNodeInfo child(AccessibilityNodeInfo n){data.children.add(n.data);n.data.parent=data;return this;}
  public AccessibilityNodeInfo pkg(String v){data.pkg=v;return this;}
  public CharSequence getPackageName(){check();return data.pkg;}

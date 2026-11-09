@@ -1,4 +1,5 @@
 package app.bean.focus;
+import android.graphics.Rect;
 import android.view.accessibility.AccessibilityNodeInfo;
 import java.util.*;
 
@@ -8,12 +9,12 @@ import java.util.*;
  * nodes; the "url" extra is read only in case a browser build provides it.
  */
 final class BrowserInspector {
- static final String TARGET="AccessibilityNodeInfo.targetUrl";
+ static final String TARGET="AccessibilityNodeInfo.targetUrl",ROLE="AccessibilityNodeInfo.chromeRole";
  private static final int NATIVE_LIMIT=180,DOCUMENT_SHELL_LIMIT=24,DOCUMENT_REFRESH_LIMIT=4;
  static final class Result {
-  String url="",source="없음",documentUrl="",playerState="";
+  String url="",source="없음",documentUrl="",playerState="",webHint="";
   boolean editing,playerShorts,playerChecked,nativeTruncated,playerTruncated,documentUnavailable,pageYouTube;
-  int nativeNodes,documentNodes,playerNodes,documentRefreshes,youtubeLinks,otherLinks,pageEvidence;
+  int nativeNodes,documentNodes,playerNodes,documentRefreshes,youtubeLinks,otherLinks,pageEvidence,roleNodes,viewNodes,hiddenWebRoots;
   // A document location wins over a stale toolbar regardless of sibling order.
   void document(String raw){String value=BrowserAddress.clean(raw);if(UrlRules.parse(value)!=null&&!documentKnown())documentUrl=value;}
   private boolean documentKnown(){return documentLocation(documentUrl);}
@@ -26,7 +27,7 @@ final class BrowserInspector {
   // Only a host class leaves this object: 1 YouTube, -1 another site, 0 unknown.
   int hostEvidence(){return addressHidden()?pageEvidence:UrlRules.isYouTube(url)?1:-1;}
   boolean shorts(){return UrlRules.isShorts(url)||playerShorts;}
-  String diagnostic(){return (confirmedHome()?"유튜브 홈 확인":addressHidden()&&pageYouTube?"주소창 숨김 · 유튜브 화면으로 판단":BrowserAddress.status(url))+(playerChecked&&addressHidden()?" · 화면 링크 유튜브 "+youtubeLinks+" / 기타 "+otherLinks:"")+"\n읽은 위치: "+source+" · 경로 "+(confirmedHome()?"루트 / 확인":BrowserAddress.hasPath(url)?"있음":"미확인")+(editing?" · 주소 입력 중":"")+(playerState.isEmpty()?"":"\n"+playerState)+"\n탐색 노드: UI "+nativeNodes+" · 문서 "+documentNodes+" · 플레이어 "+playerNodes+(nativeTruncated?"\n브라우저 UI 탐색 한도 도달":"")+(playerTruncated?"\n웹 플레이어 탐색 한도 도달":"");}
+  String diagnostic(){return (confirmedHome()?"유튜브 홈 확인":addressHidden()&&pageYouTube?"주소창 숨김 · 유튜브 화면으로 판단":BrowserAddress.status(url))+(playerChecked&&addressHidden()?" · 화면 링크 유튜브 "+youtubeLinks+" / 기타 "+otherLinks:"")+"\n읽은 위치: "+source+" · 경로 "+(confirmedHome()?"루트 / 확인":BrowserAddress.hasPath(url)?"있음":"미확인")+(editing?" · 주소 입력 중":"")+(playerState.isEmpty()?"":"\n"+playerState)+"\n탐색 노드: UI "+nativeNodes+" · 문서 "+documentNodes+" · 플레이어 "+playerNodes+(nativeTruncated?"\n브라우저 UI 탐색 한도 도달":"")+(playerTruncated?"\n웹 플레이어 탐색 한도 도달":"")+(webHint.isEmpty()?"":"\n"+webHint);}
  }
  static Result read(AccessibilityNodeInfo root,String pkg){return read(root,pkg,true);}
  static Result read(AccessibilityNodeInfo root,String pkg,boolean allowPlayerFallback){
@@ -43,13 +44,17 @@ final class BrowserInspector {
   Result result=new Result();if(root==null||pkg==null)return result;
   ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();
   List<AccessibilityNodeInfo> webRoots=new ArrayList<>();queue.add(AccessibilityNodeInfo.obtain(root));
+  AccessibilityNodeInfo emptyArea=null;long emptySize=0;Rect bounds=new Rect();
   try{
    while(!queue.isEmpty()){
     AccessibilityNodeInfo n=queue.remove();result.nativeNodes++;
     try{
-     if(!n.isVisibleToUser())continue;
+     if(!n.isVisibleToUser()){if(webRoot(n))result.hiddenWebRoots++;continue;}
      if(webRoot(n)){if(refreshDocument(n,result)&&readDocument(n,result))webRoots.add(AccessibilityNodeInfo.obtain(n));continue;}
      address(n,result);int children=n.getChildCount();
+     if(!string(n.getExtras().getCharSequence(ROLE)).isEmpty())result.roleNodes++;
+     if("android.view.View".contentEquals(string(n.getClassName())))result.viewNodes++;
+     if(children==0){n.getBoundsInScreen(bounds);long size=(long)Math.max(0,bounds.width())*Math.max(0,bounds.height());if(size>emptySize){if(emptyArea!=null)emptyArea.recycle();emptyArea=AccessibilityNodeInfo.obtain(n);emptySize=size;}}
      for(int i=0;i<children;i++){
       if(result.nativeNodes+queue.size()>=NATIVE_LIMIT){result.nativeTruncated=true;break;}
       AccessibilityNodeInfo child=n.getChild(i);if(child!=null)queue.add(child);
@@ -63,6 +68,7 @@ final class BrowserInspector {
     if(found==null)continue;
     try{for(AccessibilityNodeInfo n:found)address(n,result);}finally{for(AccessibilityNodeInfo n:found)if(n!=null)n.recycle();}
    }
+   if(webRoots.isEmpty())result.webHint=probeEmptyArea(emptyArea,result,webRoots);
    result.finishDocument();
    // Chromium exposes no page URL on accessibility nodes, and Samsung Internet hides its
    // toolbar while scrolling. With no readable address, check the page only when this
@@ -89,12 +95,29 @@ final class BrowserInspector {
     }
    }
    return result;
-  }finally{while(!queue.isEmpty())queue.remove().recycle();for(AccessibilityNodeInfo n:webRoots)n.recycle();}
+  }finally{while(!queue.isEmpty())queue.remove().recycle();for(AccessibilityNodeInfo n:webRoots)n.recycle();if(emptyArea!=null)emptyArea.recycle();}
  }
  static boolean webRoot(AccessibilityNodeInfo n){return "android.webkit.WebView".contentEquals(string(n.getClassName()))||documentRole(n);}
  static boolean onScreen(AccessibilityNodeInfo n){return n.isVisibleToUser()&&!n.getExtras().getBoolean("AccessibilityNodeInfo.offscreen",false);}
  private static boolean documentLocation(String raw){java.net.URI u=UrlRules.parse(raw);return u!=null&&u.getPath()!=null&&!u.getPath().isEmpty();}
- static boolean documentRole(AccessibilityNodeInfo n){return "rootWebArea".equals(string(n.getExtras().getCharSequence("AccessibilityNodeInfo.chromeRole")));}
+ static boolean documentRole(AccessibilityNodeInfo n){return "rootWebArea".equals(string(n.getExtras().getCharSequence(ROLE)));}
+ /**
+  * No web root was found. Chromium returns no web tree on its first provider request, so a
+  * cached copy of the page view can stay empty. Re-read the largest empty view once, and
+  * report only class names and counts so a device report can tell "browser hides the page"
+  * apart from "page nodes look different".
+  */
+ private static String probeEmptyArea(AccessibilityNodeInfo area,Result result,List<AccessibilityNodeInfo> webRoots){
+  StringBuilder out=new StringBuilder("웹 영역 진단: Chromium 역할 ").append(result.roleNodes).append(" · View ").append(result.viewNodes);
+  if(result.hiddenWebRoots>0)out.append(" · 숨은 웹 루트 ").append(result.hiddenWebRoots);
+  if(area==null)return out.append(" · 빈 영역 없음").toString();
+  out.append(" · 가장 큰 빈 영역 ").append(simpleClass(area.getClassName()));
+  if(!area.refresh())return out.append(" · 새로고침 실패").toString();
+  out.append(" → 새로고침 후 ").append(simpleClass(area.getClassName())).append(" 자식 ").append(area.getChildCount());
+  if(webRoot(area)&&onScreen(area)&&readDocument(area,result)){webRoots.add(AccessibilityNodeInfo.obtain(area));out.append(" · 웹 루트 확보");}
+  return out.toString();
+ }
+ private static String simpleClass(CharSequence cls){String s=string(cls);return s.isEmpty()?"(없음)":s.substring(s.lastIndexOf('.')+1);}
  private static boolean refreshDocument(AccessibilityNodeInfo n,Result result){
   // Re-query only document roots, not every video/control node. This bypasses
   // stale Android snapshots after a page transition; provider caches may remain.
@@ -102,7 +125,7 @@ final class BrowserInspector {
   result.documentRefreshes++;if(!n.refresh()||!onScreen(n)){result.documentUnavailable=true;return false;}return true;
  }
  private static boolean nativeWrapper(AccessibilityNodeInfo n){
-  if(!string(n.getExtras().getCharSequence("AccessibilityNodeInfo.chromeRole")).isEmpty()||!string(n.getExtras().getCharSequence(TARGET)).isEmpty())return false;
+  if(!string(n.getExtras().getCharSequence(ROLE)).isEmpty()||!string(n.getExtras().getCharSequence(TARGET)).isEmpty())return false;
   String id=n.getViewIdResourceName(),cls=string(n.getClassName());
   return (id!=null&&id.contains(":id/"))||"android.webkit.WebView".equals(cls)||"android.widget.FrameLayout".equals(cls)||"android.widget.LinearLayout".equals(cls)||"android.view.ViewGroup".equals(cls);
  }
