@@ -77,7 +77,7 @@ public class MainActivity extends Activity {
   c.addView(text("삼성 인터넷 설정의 광고 차단기에서 집중콩을 켜면, 브라우저가 쇼츠 페이지와 쇼츠 재생 요청만 직접 막습니다. 일반 영상·검색·홈·다른 사이트는 막지 않습니다. 화면 인식과 별도로 동작하므로 주소창이 숨겨져도 적용됩니다.",14,Color.DKGRAY));
   samsungStatus=text("",13,Color.rgb(36,116,92));c.addView(samsungStatus);
   button(c,"삼성 인터넷 광고 차단기 설정 열기",v->{if(!SamsungContentBlocker.openSettings(this))Toast.makeText(this,"삼성 인터넷이 없거나 광고 차단기 설정을 열 수 없어요",Toast.LENGTH_LONG).show();});
-  c.addView(text("목록에서 집중콩을 켜세요. 목록에서 집중콩이 사라졌으면 이 버튼으로 다시 열어 켜세요. 버튼을 누를 때마다 삼성 인터넷에 목록을 다시 알립니다. 삼성 인터넷 버전에 따라 일부 규칙이 적용되지 않을 수 있고, 삼성 인터넷 설정에서 끄면 이 보호도 꺼집니다. 쇼츠 차단 스위치를 끄면 빈 목록을 전달합니다.",12,Color.GRAY));
+  c.addView(text("목록에서 집중콩을 켜세요. 목록에서 집중콩이 사라졌으면 이 버튼으로 다시 열어 켜세요. 버튼을 누를 때마다 삼성 인터넷에 목록을 다시 알립니다. 삼성 인터넷 버전에 따라 일부 규칙이 적용되지 않을 수 있고, 삼성 인터넷 설정에서 끄면 이 보호도 꺼집니다. 쇼츠 차단 스위치를 끄면 쇼츠 규칙을 뺀 목록을 전달합니다.",12,Color.GRAY));
   c=card();c.addView(text("02  게임 차단",20,Color.rgb(29,60,49)));gameSummary=text("",14,Color.DKGRAY);c.addView(gameSummary);gamesButton=button(c,"차단할 게임 선택",v->chooseGames());
   c=card();c.addView(text("03  접근성 연결",20,Color.rgb(29,60,49)));status=text("",14,Color.DKGRAY);c.addView(status);
   c.addView(text("다른 앱의 게임·웹 쇼츠 차단에 필요합니다. 지원 브라우저 주소와 선택한 게임의 실행을 기기 안에서만 확인합니다. 런처 아이콘 없는 앱도 조회하기 위해 전체 패키지 조회 권한을 사용하며 설치 이벤트를 기기 안에 기록합니다. 전체 주소는 기록하지 않습니다. 이용 시간·채널 분류·차단 통계는 기기에 저장하고 서버로 전송하지 않습니다.",14,Color.DKGRAY));

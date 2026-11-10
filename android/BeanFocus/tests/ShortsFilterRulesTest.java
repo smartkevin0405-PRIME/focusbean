@@ -18,7 +18,8 @@ public class ShortsFilterRulesTest {
  }
  public static void main(String[] args){
   List<String> on=rules(ShortsFilterRules.text(true)),off=rules(ShortsFilterRules.text(false));
-  ok(off.isEmpty());ok(!on.isEmpty());
+  // Off: only a placeholder on the reserved .invalid domain, so the list is never empty.
+  ok(off.size()==1&&off.get(0).equals(ShortsFilterRules.PLACEHOLDER)&&off.get(0).endsWith(".invalid^")&&!off.get(0).contains("youtube"));ok(!on.isEmpty());ok(!on.contains(ShortsFilterRules.PLACEHOLDER));
   for(String shorts:new String[]{"https://m.youtube.com/shorts/abc","https://www.youtube.com/shorts/abc?feature=share","https://youtube.com/shorts","https://m.youtube.com/youtubei/v1/reel/reel_item_watch?prettyPrint=false","https://www.youtube.com/youtubei/v1/reel/reel_watch_sequence"})ok(blocks(on,shorts));
   for(String allowed:new String[]{"https://m.youtube.com/","https://m.youtube.com/watch?v=lesson","https://m.youtube.com/results?search_query=shorts","https://m.youtube.com/@channel/shorts","https://m.youtube.com/youtubei/v1/player","https://m.youtube.com/youtubei/v1/next","https://m.youtube.com/youtubei/v1/browse","https://youtu.be/abc","https://example.org/youtube.com/shorts/x","https://notyoutube.com/shorts/x","https://www.google.com/search?q=youtube+shorts"})ok(!blocks(on,allowed));
   for(String off1:new String[]{"https://m.youtube.com/shorts/abc","https://m.youtube.com/youtubei/v1/reel/reel_item_watch"})ok(!blocks(off,off1));
