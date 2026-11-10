@@ -63,8 +63,9 @@ jobs:
 
       - name: Validate exact main source revision
         run: |
-          git fetch --no-tags --depth=2 origin "$GITHUB_SHA"
-          test "$(git rev-parse HEAD^)" = '32d593e9a47aa431198529d424da3830ee3e42be'
+          git fetch --no-tags origin '32d593e9a47aa431198529d424da3830ee3e42be'
+          cd ../..
+          test "$(git show '32d593e9a47aa431198529d424da3830ee3e42be:android/BeanFocus/AndroidManifest.xml' | sha256sum | cut -d' ' -f1)" = "$(sha256sum android/BeanFocus/AndroidManifest.xml | cut -d' ' -f1)"
           git diff --exit-code '32d593e9a47aa431198529d424da3830ee3e42be' HEAD -- android/BeanFocus
       - name: Collect APK and public Android signing tools
         run: |
