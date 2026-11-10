@@ -38,8 +38,8 @@ try {
         'UrlRulesTest', 'BrowserAddressTest', 'BrowserScanPolicyTest', 'BlockPolicyTest', 'WindowPolicyTest', 'UpdateRulesTest', 'RecentCloseTest', 'TimerRulesTest', 'GrowthRulesTest', 'XpMathTest', 'ShortsFilterRulesTest')
     Run-Suite 'state' ((Source-Files 'tests/fakes/android' @('content/Context', 'content/SharedPreferences', 'os/SystemClock', 'os/Build', 'provider/Settings')) +
         @('tests/fakes/app/bean/focus/Prefs.java') + (Source-Files 'src/app/bean/focus' @('FocusLock', 'TimerRules', 'NetworkTime', 'RemovalAccess',
-        'BlockPolicy', 'BrowserAddress', 'UrlRules', 'DeviceConstants', 'NewPackageLedger', 'ShortcutCheck', 'InstallTimePolicy'))) @(
-        'FocusLockStateTest', 'RemovalAccessTest', 'LedgerShortcutTest', 'NetworkTimeTest')
+        'BlockPolicy', 'BrowserAddress', 'UrlRules', 'DeviceConstants', 'NewPackageLedger', 'ShortcutCheck', 'InstallTimePolicy', 'SwitchOffDelay'))) @(
+        'FocusLockStateTest', 'RemovalAccessTest', 'LedgerShortcutTest', 'NetworkTimeTest', 'SwitchOffDelayTest')
     Run-Suite 'growth' ((Source-Files 'tests/fakes/android' @('content/Context', 'content/SharedPreferences', 'os/SystemClock')) +
         (Source-Files 'tests/fakes/app/bean/focus' @('Prefs', 'AnalyticsDb')) + (Source-Files 'src/app/bean/focus' @('GrowthTracker', 'GrowthRules'))) @('GrowthTrackerTest')
     Run-Suite 'telemetry' ((Source-Files 'tests/fakes/android' @('content/Context', 'os/SystemClock')) +

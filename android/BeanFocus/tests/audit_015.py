@@ -73,6 +73,10 @@ manifest = (root / 'AndroidManifest.xml').read_text(encoding='utf-8-sig')
 assert 'android:authorities="app.bean.focus.contentBlocker.contentProvider" android:exported="true"' in manifest
 assert 'com.samsung.android.sbrowser.contentBlocker.interfaceVersion" android:value="API_1.0"' in manifest
 assert 'com.samsung.android.sbrowser.permission.CONTENTBLOCKER' in manifest
+# Blocking switches turn off only through the 10-minute wait.
+main = (src / 'MainActivity.java').read_text(encoding='utf-8-sig')
+assert 'putBoolean("enabled",on)' not in main and 'putBoolean("shorts",on)' not in main
+assert 'switchChanged(SwitchOffDelay.ENABLED' in main and 'switchChanged(SwitchOffDelay.SHORTS' in main
 blocker = (src / 'SamsungContentBlocker.java').read_text(encoding='utf-8-sig')
 assert 'ShortsFilterRules.announce(' in blocker and 'samsung_blocker_notified_wall' in blocker
 assert 'SamsungContentBlocker.browserChanged(' in (src / 'FocusService.java').read_text(encoding='utf-8-sig')
