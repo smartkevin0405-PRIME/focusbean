@@ -33,3 +33,26 @@
 `publish.yml`은 `release/release.json` 변경 시 기존에 서명된 `release/BeanFocus.apk.b64`의 체크섬을 확인해 APK를 게시합니다.
 게시 전 APK의 실제 앱 ID·버전·기존 인증서와 소스 리비전도 검사합니다.
 새 APK와 메타데이터는 같은 버전으로 갱신해야 합니다. 소스 검증 작업에서는 서명키를 사용하지 않습니다.
+
+### 서명 APK 자동 빌드 (`release-signed.yml`)
+
+Actions 탭에서 **Build and sign BeanFocus APK**를 `main`으로 직접 실행합니다.
+테스트, 빌드, 기존 키 서명, 앱 ID·버전·인증서·삼성 권한 검사를 거쳐 APK를 실행 결과(Artifacts)로 올립니다.
+`publish`를 켜면 `v<버전>` 릴리스로 게시해 앱 내 업데이트와 위 다운로드 링크에 반영합니다. 이미 게시한 버전은 다시 게시하지 않습니다.
+
+저장소 Settings → Secrets and variables → Actions에 다음 값을 등록해야 합니다. 값은 저장소·로그에 남지 않습니다.
+
+| 이름 | 값 |
+|---|---|
+| `SIGNING_KEYSTORE_B64` | 기존 `.p12` 키 파일의 base64 |
+| `SIGNING_KEY_ALIAS` | 키 별칭 |
+| `SIGNING_STORE_PASSWORD` | 키 저장소 암호 |
+| `SIGNING_KEY_PASSWORD` | 키 암호(저장소 암호와 같으면 생략) |
+
+Windows PowerShell에서 base64를 클립보드로 복사하는 예입니다.
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\경로\BeanFocus-beta.p12")) | Set-Clipboard
+```
+
+키의 인증서가 위 SHA-256과 다르면 서명하지 않고 실패합니다.
