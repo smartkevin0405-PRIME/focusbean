@@ -16,12 +16,12 @@ import java.util.*;
 public class MainActivity extends Activity {
  private LinearLayout body;
  private TextView status, gameSummary;
- private TextView lockStatus,removalStatus,samsungStatus,offStatus;
+ private TextView lockStatus,removalStatus,samsungStatus;
  private TextView petStatus,petSpeech;
  private ProgressBar petProgress;
  private PetView petView;
  private Switch enabledSwitch,shortsSwitch,strictSwitch,guardSwitch,newAppsSwitch,otherProfilesSwitch;
- private Button cancelOffButton,gamesButton,startLockButton,unlockButton,cancelUnlockButton,removalButton,cancelRemovalButton;
+ private Button gamesButton,startLockButton,unlockButton,cancelUnlockButton,removalButton,cancelRemovalButton;
  private boolean syncing;
  private final Handler handler=new Handler(Looper.getMainLooper());
  private final Runnable tick=new Runnable(){public void run(){refresh();handler.postDelayed(this,1000);}};
@@ -47,10 +47,8 @@ public class MainActivity extends Activity {
   button(c,"XP 수식 연구실",v->startActivity(new Intent(this,FormulaActivity.class)));
   button(c,"시간 관측소 · 상세 통계",v->startActivity(new Intent(this,StatsActivity.class)));
   c.addView(text("차단 연결 유지 시간을 선택한 수식으로 XP에 반영합니다. 수식 연구실에서 원하는 수식을 고를 수 있습니다. 접근성 연결과 차단이 켜져 있고, 쇼츠 또는 선택한 게임 차단이 설정돼 있어야 적립됩니다. 공부량을 측정하는 기능은 아닙니다. 화면이 꺼진 뒤 기기가 절전 상태라면 일부 시간이 적립되지 않을 수 있습니다.",12,Color.GRAY));
-  c=card();Switch enabled=new Switch(this);enabledSwitch=enabled;enabled.setText("차단 켜기");enabled.setTextSize(19);enabled.setPadding(0,dp(12),0,dp(12));enabled.setChecked(Prefs.enabled(this));c.addView(enabled);enabled.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}switchChanged(SwitchOffDelay.ENABLED,"차단 켜기",on);});
-  Switch shorts=new Switch(this);shortsSwitch=shorts;shorts.setText("유튜브 쇼츠 차단");shorts.setChecked(Prefs.get(this).getBoolean("shorts",true));shorts.setPadding(0,dp(12),0,dp(12));c.addView(shorts);shorts.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}switchChanged(SwitchOffDelay.SHORTS,"유튜브 쇼츠 차단",on);});
-  offStatus=text("",13,Color.rgb(36,116,92));c.addView(offStatus);
-  cancelOffButton=button(c,"끄기 요청 취소",v->{SwitchOffDelay.cancel(this,SwitchOffDelay.ENABLED);SwitchOffDelay.cancel(this,SwitchOffDelay.SHORTS);refresh();});
+  c=card();Switch enabled=new Switch(this);enabledSwitch=enabled;enabled.setText("차단 켜기");enabled.setTextSize(19);enabled.setPadding(0,dp(12),0,dp(12));enabled.setChecked(Prefs.enabled(this));c.addView(enabled);enabled.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("enabled",on).apply();FocusService.reload();refresh();});
+  Switch shorts=new Switch(this);shortsSwitch=shorts;shorts.setText("유튜브 쇼츠 차단");shorts.setChecked(Prefs.get(this).getBoolean("shorts",true));shorts.setPadding(0,dp(12),0,dp(12));c.addView(shorts);shorts.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("shorts",on).apply();FocusService.reload();});
   strictSwitch=new Switch(this);strictSwitch.setText("잠금 중 미지원 브라우저 제한");strictSwitch.setChecked(Prefs.get(this).getBoolean("strict_locked_web",true));c.addView(strictSwitch);strictSwitch.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("strict_locked_web",on).apply();FocusService.reload();});
   guardSwitch=new Switch(this);guardSwitch.setText("잠금 중 차단 해제 설정 가드");guardSwitch.setChecked(Prefs.get(this).getBoolean("guard_locked_settings",true));c.addView(guardSwitch);guardSwitch.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("guard_locked_settings",on).apply();FocusService.reload();});
   c.addView(text("잠금 중 집중콩의 접근성 해제·강제 중지·삭제 화면과 유튜브 앱 정보 화면에서 뒤로 이동합니다. 전화·긴급 통화는 그대로 사용할 수 있습니다. 잠금 중 접근성의 집중콩 항목, 집중콩·유튜브 앱 관리, 디바이스 케어·루틴의 집중콩 항목, 날짜·시간 수동 변경은 가드 대상입니다. 10분 조기 해제 대기와 안전 모드는 비상구로 남습니다. 설정 UI가 바뀌거나 서비스가 중단되면 가드를 놓칠 수 있습니다.",12,Color.GRAY));
@@ -104,24 +102,9 @@ public class MainActivity extends Activity {
   removalStatus.setText(!guarded?"삭제 대기 없음 · 앱 정보에서 삭제 가능":allowed?"집중콩 삭제·앱 정보 허용 중 · "+FocusLock.format(RemovalAccess.allowedRemaining(this))+" 남음":ready?"대기 완료 · 아래 버튼을 눌러 5분간 허용하세요":pending?"삭제 허용까지 "+FocusLock.format(RemovalAccess.remaining(this)):"삭제를 원하면 10분 대기를 시작하세요");
   removalButton.setEnabled(!guarded||allowed||ready||!pending);removalButton.setText(!guarded||allowed?"앱 정보 열기 · 삭제 가능":ready?"삭제 진행 · 5분 허용":pending?"삭제 허용 대기 중":"삭제 허용 요청 · 10분 대기");cancelRemovalButton.setVisibility(guarded&&(pending||allowed)?View.VISIBLE:View.GONE);
  }
- /** Off needs a 10-minute wait, then a confirmation within 5 minutes; on is immediate. */
- private void switchChanged(String key,String name,boolean on){
-  if(on){SwitchOffDelay.turnOn(this,key);FocusService.reload();refresh();return;}
-  if(SwitchOffDelay.state(this,key)==SwitchOffDelay.READY){
-   new AlertDialog.Builder(this).setTitle(name+" 끄기").setMessage("10분 대기가 끝났어요. 끄면 다시 켤 때까지 이 차단이 멈춰요.").setNegativeButton("켜 두기",(d,w)->{SwitchOffDelay.cancel(this,key);refresh();}).setPositiveButton("끄기",(d,w)->{if(SwitchOffDelay.turnOff(this,key))FocusService.reload();refresh();}).show();
-   refresh();return;
-  }
-  SwitchOffDelay.request(this,key);
-  Toast.makeText(this,name+" · 끄려면 10분을 기다려야 해요. 남은 시간 "+FocusLock.format(SwitchOffDelay.left(this,key)),Toast.LENGTH_LONG).show();
-  refresh();
- }
- private String offLine(String key,String name){
-  int state=SwitchOffDelay.state(this,key);long left=SwitchOffDelay.left(this,key);
-  return state==SwitchOffDelay.WAITING?"\n"+name+" · 끄기 대기 "+FocusLock.format(left):state==SwitchOffDelay.READY?"\n"+name+" · 지금 끌 수 있음 · "+FocusLock.format(left)+" 안에 스위치를 끄세요":"";
- }
  private void refresh(){refreshRemoval();SamsungContentBlocker.sync(this);if(samsungStatus!=null)samsungStatus.setText(SamsungContentBlocker.status(this));if(status!=null)status.setText(FocusService.diagnostics(this));if(gameSummary!=null)gameSummary.setText("선택한 앱 "+Prefs.games(this).size()+"개 · 잠금 중에는 Android가 게임으로 분류한 앱도 자동 차단합니다.");
   if(petStatus!=null){long xp=GrowthTracker.xp(this);int level=GrowthRules.level(xp);String next=level<4?"다음 성장까지 "+(GrowthRules.THRESHOLDS[level+1]-xp)+" XP":"모든 성장 단계 달성 · 연구는 계속!";petStatus.setText("Lv."+(level+1)+" "+GrowthRules.NAMES[level]+"  ·  "+xp+" XP\n"+next);long base=GrowthRules.THRESHOLDS[level];petProgress.setProgress(level==4?1000:(int)Math.min(1000,(xp-base)*1000/(GrowthRules.THRESHOLDS[level+1]-base)));petSpeech.setText(FocusService.connected()&&GrowthTracker.eligible(this)?"“한 번에 한 문제씩. 지금도 조금씩 자라고 있어.”":"“기다리고 있을게. 연결을 켜면 다시 함께 시작하자.”");}
-  if(lockStatus==null)return;boolean locked=FocusLock.active(this),requested=FocusLock.requested(this);syncing=true;enabledSwitch.setChecked(Prefs.enabled(this));shortsSwitch.setChecked(Prefs.get(this).getBoolean("shorts",true));strictSwitch.setChecked(Prefs.get(this).getBoolean("strict_locked_web",true));guardSwitch.setChecked(Prefs.get(this).getBoolean("guard_locked_settings",true));newAppsSwitch.setChecked(Prefs.get(this).getBoolean("block_new_apps",false));otherProfilesSwitch.setChecked(Prefs.get(this).getBoolean("block_other_profiles",true));syncing=false;String off=offLine(SwitchOffDelay.ENABLED,"차단 켜기")+offLine(SwitchOffDelay.SHORTS,"유튜브 쇼츠 차단");offStatus.setText(off.isEmpty()?"끄려면 10분을 기다려야 해요. 켜는 건 바로 돼요.":off.substring(1));cancelOffButton.setVisibility(off.isEmpty()?View.GONE:View.VISIBLE);enabledSwitch.setEnabled(!locked);shortsSwitch.setEnabled(!locked);strictSwitch.setEnabled(!locked);guardSwitch.setEnabled(!locked);newAppsSwitch.setEnabled(!locked);otherProfilesSwitch.setEnabled(!locked);gamesButton.setEnabled(!locked);startLockButton.setVisibility(locked?View.GONE:View.VISIBLE);unlockButton.setVisibility(locked?View.VISIBLE:View.GONE);cancelUnlockButton.setVisibility(requested?View.VISIBLE:View.GONE);
+  if(lockStatus==null)return;boolean locked=FocusLock.active(this),requested=FocusLock.requested(this);syncing=true;enabledSwitch.setChecked(Prefs.enabled(this));shortsSwitch.setChecked(Prefs.get(this).getBoolean("shorts",true));strictSwitch.setChecked(Prefs.get(this).getBoolean("strict_locked_web",true));guardSwitch.setChecked(Prefs.get(this).getBoolean("guard_locked_settings",true));newAppsSwitch.setChecked(Prefs.get(this).getBoolean("block_new_apps",false));otherProfilesSwitch.setChecked(Prefs.get(this).getBoolean("block_other_profiles",true));syncing=false;enabledSwitch.setEnabled(!locked);shortsSwitch.setEnabled(!locked);strictSwitch.setEnabled(!locked);guardSwitch.setEnabled(!locked);newAppsSwitch.setEnabled(!locked);otherProfilesSwitch.setEnabled(!locked);gamesButton.setEnabled(!locked);startLockButton.setVisibility(locked?View.GONE:View.VISIBLE);unlockButton.setVisibility(locked?View.VISIBLE:View.GONE);cancelUnlockButton.setVisibility(requested?View.VISIBLE:View.GONE);
   String message="설정 잠금 꺼짐 · 차단 설정 변경 가능";
   if(locked){message="집중 잠금 남은 시간 "+FocusLock.format(FocusLock.remaining(this));if(requested)message+="\n"+(FocusLock.ready(this)?"대기 완료 · 아래 버튼으로 해제 가능":"조기 해제까지 "+FocusLock.format(FocusLock.waitRemaining(this)));}
   lockStatus.setText(message);unlockButton.setEnabled(!requested||FocusLock.ready(this));unlockButton.setText(FocusLock.ready(this)?"설정 잠금 해제":requested?"해제 대기 중":"조기 해제 요청 · 10분 대기");
