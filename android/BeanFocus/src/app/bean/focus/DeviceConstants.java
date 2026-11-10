@@ -14,6 +14,8 @@ final class DeviceConstants {
  static final String[] BROWSERS={"com.sec.android.app.sbrowser","com.sec.android.app.sbrowser.beta","com.android.chrome","com.chrome.beta","com.chrome.dev","com.chrome.canary","com.microsoft.emmx","com.brave.browser","org.mozilla.firefox","org.mozilla.firefox_beta","org.mozilla.fenix","org.mozilla.focus","com.naver.whale","com.opera.browser","com.opera.mini.native","com.kiwibrowser.browser","com.vivaldi.browser","com.duckduckgo.mobile.android"};
  static boolean webHost(String pkg){return "com.kakao.talk".equals(pkg)||"com.nhn.android.search".equals(pkg)||"com.naver.android.main".equals(pkg)||"com.google.android.googlequicksearchbox".equals(pkg)||"com.instagram.android".equals(pkg)||"com.discord".equals(pkg)||"com.everytime.v2".equals(pkg)||"com.everytime".equals(pkg);}
  static final String OWN="app.bean.focus",SETTINGS="com.android.settings",SAMSUNG_ACCESS="com.samsung.accessibility";
+ static final String APP_LABEL="집중콩";
+ static final Set<String> SAMSUNG_BROWSERS=set("com.sec.android.app.sbrowser","com.sec.android.app.sbrowser.beta");
  static final Set<String> SURFACES=set(SETTINGS,"com.samsung.android.settings",SAMSUNG_ACCESS,"com.samsung.android.lool","com.samsung.android.sm","com.samsung.android.app.routines","com.android.packageinstaller","com.google.android.packageinstaller","com.samsung.android.packageinstaller");
  static final Set<String> CARE=set("com.samsung.android.lool","com.samsung.android.sm","com.samsung.android.app.routines");
  static final Set<String> EMERGENCY=set("com.android.dialer","com.android.incallui","com.samsung.android.incallui","com.android.phone","com.android.server.telecom","com.samsung.android.dialer","com.google.android.dialer","com.android.systemui");
