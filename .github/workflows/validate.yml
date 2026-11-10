@@ -61,3 +61,25 @@ jobs:
           UNSIGNED_ONLY: '1'
         run: bash build.sh
 
+      - name: Validate exact main source revision
+        run: |
+          git fetch --no-tags origin '85f21580e1eaf2e96105083d0210f3e3bacb7351'
+          cd ../..
+          test "$(git show '85f21580e1eaf2e96105083d0210f3e3bacb7351:android/BeanFocus/AndroidManifest.xml' | sha256sum | cut -d' ' -f1)" = "$(sha256sum android/BeanFocus/AndroidManifest.xml | cut -d' ' -f1)"
+          git diff --exit-code '85f21580e1eaf2e96105083d0210f3e3bacb7351' HEAD -- android/BeanFocus
+      - name: Collect APK and public Android signing tools
+        run: |
+          mkdir -p build/export-tools
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/export-tools/apksigner.jar
+          cp "$ANDROID_HOME/build-tools/35.0.0/aapt2" build/export-tools/aapt2
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" build/export-tools/zipalign
+          sha256sum build/aligned.apk build/export-tools/* > build/export-tools/checksums.txt
+      - name: Upload compiled APK for local private-key signing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: beanfocus-main-85f2158-unsigned
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            android/BeanFocus/build/aligned.apk
+            android/BeanFocus/build/export-tools/
