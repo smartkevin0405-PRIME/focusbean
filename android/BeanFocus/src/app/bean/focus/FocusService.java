@@ -94,7 +94,7 @@ public class FocusService extends AccessibilityService {
  private static boolean emergencySurface(String p){return DeviceConstants.emergency(p);}
 
  private SettingsGuard.Match guardMatch(AccessibilityNodeInfo root,String p){
-  if(BlockerGuard.surface(p))return BlockerGuard.ownSwitch(root)==BlockerGuard.ON?new SettingsGuard.Match("삼성 인터넷 광고 차단기 · 켜진 집중콩 보호",true,false,false,8):new SettingsGuard.Match("",false,false,false,0);
+  if(BlockerGuard.surface(p))return BlockerGuard.ownSwitch(root)==BlockerGuard.ON?new SettingsGuard.Match("삼성 인터넷 광고 차단 기능 · 켜진 집중콩 보호",true,false,false,8):new SettingsGuard.Match("",false,false,false,0);
   return SettingsGuard.decide(p,SettingsNodeCollector.collect(root),Prefs.shorts(this),RemovalAccess.allowed(this));
  }
 
@@ -106,7 +106,7 @@ public class FocusService extends AccessibilityService {
    if(RemovalAccess.request(this))Toast.makeText(this,"집중콩 · 삭제 허용 대기를 시작했어요. 10분 뒤 삭제 화면을 다시 열거나 앱에서 진행하세요.",Toast.LENGTH_LONG).show();
   }
   long now=SystemClock.elapsedRealtime();if(now-lastGuard<900)return true;lastGuard=now;int window=root.getWindowId();
-  if(m.rule==8)Toast.makeText(this,"집중 잠금 중에는 삼성 인터넷 광고 차단기에서 집중콩을 끌 수 없어요",Toast.LENGTH_SHORT).show();
+  if(m.rule==8)Toast.makeText(this,"집중 잠금 중에는 삼성 인터넷 광고 차단 기능에서 집중콩을 끌 수 없어요",Toast.LENGTH_SHORT).show();
   boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p);browserState="잠금 설정 가드 · "+m.reason+" · 뒤로 요청 "+(delivered?"전달됨":"실패");
   handler.postDelayed(()->safe("설정 가드 재확인",()->{if(!FocusLock.active(this)||!Prefs.get(this).getBoolean("guard_locked_settings",true)||!awake())return;AccessibilityNodeInfo again=activeRoot(p,window);if(again!=null)try{if(!guardMatch(again,p).reason.isEmpty()){globalActionFor(GLOBAL_ACTION_HOME,p);browserState="잠금 설정 가드 · 보호 화면이 남아 홈 이동 요청";}}finally{again.recycle();}}),650);return true;
  }

@@ -14,7 +14,7 @@ public class BlockerGuardTest {
  }
  static AccessibilityNodeInfo page(AccessibilityNodeInfo... rows){
   AccessibilityNodeInfo root=new AccessibilityNodeInfo().pkg("com.sec.android.app.sbrowser").cls("android.widget.FrameLayout");
-  add(root,text("광고 차단기"));AccessibilityNodeInfo list=new AccessibilityNodeInfo().cls("androidx.recyclerview.widget.RecyclerView");
+  add(root,text("광고 차단 기능"));AccessibilityNodeInfo list=new AccessibilityNodeInfo().cls("androidx.recyclerview.widget.RecyclerView");
   for(AccessibilityNodeInfo r:rows)add(list,r);add(root,list);return root;
  }
  static int read(AccessibilityNodeInfo root){int s=BlockerGuard.ownSwitch(root);root.recycle();return s;}
