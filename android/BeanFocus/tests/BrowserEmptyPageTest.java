@@ -19,7 +19,7 @@ public class BrowserEmptyPageTest {
  static AccessibilityNodeInfo emptyContent(){return new AccessibilityNodeInfo().cls("android.widget.FrameLayout").bounds(0,100,720,1400);}
  static BrowserInspector.Result read(AccessibilityNodeInfo root){BrowserInspector.Result r=BrowserInspector.read(root,PKG,true,false,0);root.recycle();return r;}
  public static void main(String[] args){
-  int before=AccessibilityNodeInfo.handles;
+  int before=AccessibilityNodeInfo.handles;BrowserInspector.probeIntervalNanos=0;
   // The page view stays empty: no web root, and the report names only class and counts.
   AccessibilityNodeInfo content=emptyContent();AccessibilityNodeInfo keep=AccessibilityNodeInfo.obtain(content);
   BrowserInspector.Result r=read(browser(content));
@@ -40,6 +40,9 @@ public class BrowserEmptyPageTest {
   r=read(browser(hidden));ok(r.hiddenWebRoots==1);ok(r.webHint.contains("숨은 웹 루트 1"));
   // A view that cannot be re-read says so.
   r=read(browser(emptyContent().refreshable(false)));ok(r.webHint.contains("새로고침 실패"));
+  // Re-reads are rate limited outside tests.
+  BrowserInspector.probeIntervalNanos=60_000_000_000L;read(browser(emptyContent()));AccessibilityNodeInfo again=emptyContent();AccessibilityNodeInfo againKeep=AccessibilityNodeInfo.obtain(again);
+  r=read(browser(again));ok(againKeep.refreshes()==0&&r.webHint.contains("새로고침 대기"));againKeep.recycle();
   ok(AccessibilityNodeInfo.handles==before);
   System.out.println("Browser empty page probe: "+checks+" checks passed");
  }

@@ -73,6 +73,8 @@ manifest = (root / 'AndroidManifest.xml').read_text(encoding='utf-8-sig')
 assert 'android:authorities="app.bean.focus.contentBlocker.contentProvider" android:exported="true"' in manifest
 assert 'com.samsung.android.sbrowser.contentBlocker.interfaceVersion" android:value="API_1.0"' in manifest
 assert 'com.samsung.android.sbrowser.permission.CONTENTBLOCKER' in manifest
+# Trial (11-10): Samsung Browser 30 gives this service no page nodes; see if it does for an accessibility tool.
+assert 'android:isAccessibilityTool="true"' in (root / 'res/xml/accessibility.xml').read_text(encoding='utf-8-sig')
 # During a lock, Samsung Internet's ad blocker list cannot turn BeanFocus off.
 service = (src / 'FocusService.java').read_text(encoding='utf-8-sig')
 assert 'SettingsGuard.surface(p)||BlockerGuard.surface(p)' in service and 'BlockerGuard.ownSwitch(root)==BlockerGuard.ON' in service

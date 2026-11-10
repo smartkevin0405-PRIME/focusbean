@@ -107,11 +107,15 @@ final class BrowserInspector {
   * report only class names and counts so a device report can tell "browser hides the page"
   * apart from "page nodes look different".
   */
+ // On the device (Samsung Browser 30) the re-read never helped and one scan took 3 s,
+ // so re-read at most once a minute; the counts are still reported every scan.
+ static long probeIntervalNanos=60_000_000_000L;private static long lastProbe=Long.MIN_VALUE/2;
  private static String probeEmptyArea(AccessibilityNodeInfo area,Result result,List<AccessibilityNodeInfo> webRoots){
   StringBuilder out=new StringBuilder("웹 영역 진단: Chromium 역할 ").append(result.roleNodes).append(" · View ").append(result.viewNodes);
   if(result.hiddenWebRoots>0)out.append(" · 숨은 웹 루트 ").append(result.hiddenWebRoots);
   if(area==null)return out.append(" · 빈 영역 없음").toString();
   out.append(" · 가장 큰 빈 영역 ").append(simpleClass(area.getClassName()));
+  long now=System.nanoTime();if(now-lastProbe<probeIntervalNanos)return out.append(" · 새로고침 대기").toString();lastProbe=now;
   if(!area.refresh())return out.append(" · 새로고침 실패").toString();
   out.append(" → 새로고침 후 ").append(simpleClass(area.getClassName())).append(" 자식 ").append(area.getChildCount());
   if(webRoot(area)&&onScreen(area)&&readDocument(area,result)){webRoots.add(AccessibilityNodeInfo.obtain(area));out.append(" · 웹 루트 확보");}
