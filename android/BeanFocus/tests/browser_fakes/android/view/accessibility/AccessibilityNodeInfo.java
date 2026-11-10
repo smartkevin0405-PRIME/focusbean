@@ -3,7 +3,7 @@ import android.os.Bundle;
 import java.util.*;
 /** Small shared-data / owned-handle fake; detects leaked and recycled node handles. */
 public class AccessibilityNodeInfo {
- private static final class Data {String pkg="com.google.android.youtube";String id,text,description,cls="android.view.View",refreshUrl,refreshCls;List<Data> refreshChildren=new ArrayList<>();boolean visible=true,editable,focused,clickable,refreshable=true;int left,top,right,bottom,childReads,refreshes;Bundle extras=new Bundle();Data parent;List<Data> children=new ArrayList<>();}
+ private static final class Data {String pkg="com.google.android.youtube";String id,text,description,cls="android.view.View",refreshUrl,refreshCls;List<Data> refreshChildren=new ArrayList<>();boolean visible=true,editable,focused,clickable,checked,refreshable=true;int left,top,right,bottom,childReads,refreshes;Bundle extras=new Bundle();Data parent;List<Data> children=new ArrayList<>();}
  private final Data data;private boolean recycled;public static int handles,queries,childReads,queryNodes;
  public static void resetCounts(){queries=0;childReads=0;queryNodes=0;}
  public int childReads(){check();return data.childReads;}
@@ -25,6 +25,10 @@ public class AccessibilityNodeInfo {
  public AccessibilityNodeInfo bounds(int l,int t,int r,int b){data.left=l;data.top=t;data.right=r;data.bottom=b;return this;}
  public AccessibilityNodeInfo clickable(boolean v){data.clickable=v;return this;}
  public boolean isClickable(){check();return data.clickable;}
+ public AccessibilityNodeInfo checked(boolean v){data.checked=v;return this;}public boolean isChecked(){check();return data.checked;}
+ /** Like Android: case-insensitive "contains" over text and content description. */
+ public List<AccessibilityNodeInfo> findAccessibilityNodeInfosByText(String s){check();queries++;List<AccessibilityNodeInfo> out=new ArrayList<>();findText(data,s.toLowerCase(Locale.ROOT),out);return out;}
+ private static void findText(Data d,String s,List<AccessibilityNodeInfo> out){queryNodes++;if((d.text!=null&&d.text.toLowerCase(Locale.ROOT).contains(s))||(d.description!=null&&d.description.toLowerCase(Locale.ROOT).contains(s)))out.add(new AccessibilityNodeInfo(d));for(Data c:d.children)findText(c,s,out);}
  public void getBoundsInScreen(android.graphics.Rect r){check();r.left=data.left;r.top=data.top;r.right=data.right;r.bottom=data.bottom;}
  public boolean isVisibleToUser(){check();return data.visible;}public boolean isEditable(){check();return data.editable;}public boolean isFocused(){check();return data.focused;}
  public int getChildCount(){check();return data.children.size();}public AccessibilityNodeInfo getChild(int i){check();childReads++;data.childReads++;return new AccessibilityNodeInfo(data.children.get(i));}public AccessibilityNodeInfo getParent(){check();return data.parent==null?null:new AccessibilityNodeInfo(data.parent);}

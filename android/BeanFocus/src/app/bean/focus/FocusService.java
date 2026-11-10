@@ -43,7 +43,7 @@ public class FocusService extends AccessibilityService {
  private final Map<String,PipDismissTracker> pipAttempts=new HashMap<>();
  private final Runnable windowCheck=()->safe("창 변경 점검",()->checkBlockedWindows());
  private long lastYoutubeToast=-10000;
- private long lastYouTubeScan=-1000,lastGuard=-2000,dumpUntil,dumpAt,dumpExpires;private String dump="아직 수집한 화면 ID가 없어요",dumpPackage="";
+ private long lastYouTubeScan=-1000,lastGuard=-2000,lastBlockerCheck=-1000,dumpUntil,dumpAt,dumpExpires;private String dump="아직 수집한 화면 ID가 없어요",dumpPackage="";
  static boolean requestDump(){if(current==null)return false;current.dumpUntil=SystemClock.elapsedRealtime()+30000;current.dumpAt=0;current.dumpExpires=0;current.dump="";current.dumpPackage="";return true;}
  static String viewIds(){if(current==null)return "서비스 연결이 필요해요";FocusService s=current;if(SystemClock.elapsedRealtime()>s.dumpExpires){s.dump="";s.dumpPackage="";return "수집한 ID가 없거나 5분이 지나 지워졌어요";}return "수집 앱: "+s.dumpPackage+"\n텍스트·주소는 포함하지 않아요.\n\n"+s.dump;}
  private void captureIds(AccessibilityNodeInfo root,String pkg){long now=SystemClock.elapsedRealtime();if(now>dumpUntil||now-dumpAt<1000||!(YouTubeInspector.isPackage(pkg)||catalog.browser(pkg)||AppCatalog.webHost(pkg)||SettingsGuard.surface(pkg)))return;dump=ViewIdSnapshot.collect(root);dumpPackage=pkg;dumpAt=now;dumpExpires=now+300000;}
@@ -94,17 +94,19 @@ public class FocusService extends AccessibilityService {
  private static boolean emergencySurface(String p){return DeviceConstants.emergency(p);}
 
  private SettingsGuard.Match guardMatch(AccessibilityNodeInfo root,String p){
+  if(BlockerGuard.surface(p))return BlockerGuard.ownSwitch(root)==BlockerGuard.ON?new SettingsGuard.Match("삼성 인터넷 광고 차단기 · 켜진 집중콩 보호",true,false,false,8):new SettingsGuard.Match("",false,false,false,0);
   return SettingsGuard.decide(p,SettingsNodeCollector.collect(root),Prefs.shorts(this),RemovalAccess.allowed(this));
  }
 
  private boolean guard(AccessibilityNodeInfo root,String p){
-  if(!FocusLock.active(this)||!Prefs.get(this).getBoolean("guard_locked_settings",true)||!SettingsGuard.surface(p))return false;
+  if(!FocusLock.active(this)||!Prefs.get(this).getBoolean("guard_locked_settings",true)||!(SettingsGuard.surface(p)||BlockerGuard.surface(p)))return false;
   SettingsGuard.Match m=guardMatch(root,p);guardState=m.reason.isEmpty()?"허용":m.reason;if(m.reason.isEmpty())return false;
   if(m.own&&m.installer){
    if(RemovalAccess.ready(this)&&RemovalAccess.grant(this))return false;
    if(RemovalAccess.request(this))Toast.makeText(this,"집중콩 · 삭제 허용 대기를 시작했어요. 10분 뒤 삭제 화면을 다시 열거나 앱에서 진행하세요.",Toast.LENGTH_LONG).show();
   }
   long now=SystemClock.elapsedRealtime();if(now-lastGuard<900)return true;lastGuard=now;int window=root.getWindowId();
+  if(m.rule==8)Toast.makeText(this,"집중 잠금 중에는 삼성 인터넷 광고 차단기에서 집중콩을 끌 수 없어요",Toast.LENGTH_SHORT).show();
   boolean delivered=globalActionFor(GLOBAL_ACTION_BACK,p);browserState="잠금 설정 가드 · "+m.reason+" · 뒤로 요청 "+(delivered?"전달됨":"실패");
   handler.postDelayed(()->safe("설정 가드 재확인",()->{if(!FocusLock.active(this)||!Prefs.get(this).getBoolean("guard_locked_settings",true)||!awake())return;AccessibilityNodeInfo again=activeRoot(p,window);if(again!=null)try{if(!guardMatch(again,p).reason.isEmpty()){globalActionFor(GLOBAL_ACTION_HOME,p);browserState="잠금 설정 가드 · 보호 화면이 남아 홈 이동 요청";}}finally{again.recycle();}}),650);return true;
  }
@@ -146,6 +148,10 @@ public class FocusService extends AccessibilityService {
   if(SettingsGuard.surface(p)||YouTubeInspector.isPackage(p)){
    if(YouTubeInspector.isPackage(p)&&!youtubeEventDue(p))return;
    AccessibilityNodeInfo root=activeRoot(p,-1);if(root!=null)try{captureIds(root,p);if(guard(root,p))return;if(YouTubeInspector.isPackage(p)){if(blockedApp(p))checkBlockedWindows();else inspectYouTube(root);return;}}finally{root.recycle();}
+  }
+  // Samsung Internet's ad blocker list: leave it while BeanFocus's switch there is on (lock only).
+  if(BlockerGuard.surface(p)&&FocusLock.active(this)&&(event.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED||SystemClock.elapsedRealtime()-lastBlockerCheck>=400)){
+   lastBlockerCheck=SystemClock.elapsedRealtime();AccessibilityNodeInfo root=activeRoot(p,-1);if(root!=null)try{if(guard(root,p))return;}finally{root.recycle();}
   }
   if(blockedApp(p)){// Reject stale events if that app no longer owns an interactive window.
    AccessibilityNodeInfo root=activeRoot(p,-1);if(root!=null){try{checkBlockedWindows();}finally{root.recycle();}}return;
