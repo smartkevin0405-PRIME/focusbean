@@ -18,6 +18,7 @@ final class SamsungContentBlocker {
  private static final String FILE="samsung_shorts_filters.txt";
  private static int sent=-1;
  private static long sentAt;
+ private static boolean lockSeen;
  private SamsungContentBlocker(){}
 
  /**
@@ -25,8 +26,10 @@ final class SamsungContentBlocker {
   * after the browser is installed or updated, and again every few hours.
   */
  static synchronized void sync(Context c){
-  boolean active=Prefs.shorts(c);long now=SystemClock.elapsedRealtime();
-  if(!ShortsFilterRules.announce(sent,active,sentAt,now))return;sent=active?1:0;sentAt=now;
+  boolean active=Prefs.shorts(c),locked=FocusLock.active(c);long now=SystemClock.elapsedRealtime();
+  // A lock start also asks for a fresh read, so "live" reflects the browser at that moment.
+  boolean lockStarted=locked&&!lockSeen;lockSeen=locked;
+  if(!lockStarted&&!ShortsFilterRules.announce(sent,active,sentAt,now))return;sent=active?1:0;sentAt=now;
   for(String pkg:BROWSERS){
    Intent update=new Intent(ACTION_UPDATE);update.setData(Uri.parse("package:"+c.getPackageName()));update.setPackage(pkg);
    try{c.sendBroadcast(update);}catch(RuntimeException ignored){}
@@ -57,12 +60,14 @@ final class SamsungContentBlocker {
   for(String pkg:BROWSERS)if(pkg.equals(caller)){Prefs.get(c).edit().putLong("samsung_blocker_served_wall",System.currentTimeMillis()).apply();return;}
  }
  static String status(Context c){
-  if(!installed(c))return "삼성 인터넷 차단 목록: 삼성 인터넷이 없거나 광고 차단 기능를 지원하지 않음";
+  if(!installed(c))return "삼성 인터넷 차단 목록: 삼성 인터넷이 없거나 광고 차단 기능을 지원하지 않음";
   long at=Prefs.get(c).getLong("samsung_blocker_served_wall",0),told=Prefs.get(c).getLong("samsung_blocker_notified_wall",0),now=System.currentTimeMillis();
   String rules=Prefs.shorts(c)?"쇼츠 규칙 켜짐":"쇼츠 차단 꺼짐 · 쇼츠 규칙 없음";
   String notice=told>0?" · 마지막 알림 "+minutes(now,told)+"분 전":"";
   if(at<=0)return "삼성 인터넷 차단 목록: 아직 가져가지 않음 · 광고 차단 기능에서 집중콩을 켜세요 · "+rules+notice;
-  return "삼성 인터넷 차단 목록: 삼성 인터넷이 "+minutes(now,at)+"분 전에 가져감 · "+rules+notice;
+  return "삼성 인터넷 차단 목록: 삼성 인터넷이 "+minutes(now,at)+"분 전에 가져감 · "+rules+notice+(ShortsFilterRules.live(at,now)?" · 차단기 동작 중":" · 차단기 멈춤(최근 7시간 동안 안 가져감)");
  }
+ /** Samsung Browser fetched the list recently, so its own filter blocks Shorts. */
+ static boolean live(Context c){return ShortsFilterRules.live(Prefs.get(c).getLong("samsung_blocker_served_wall",0),System.currentTimeMillis());}
  private static long minutes(long now,long at){return Math.max(0,(now-at)/60000);}
 }

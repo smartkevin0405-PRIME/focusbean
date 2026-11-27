@@ -11,9 +11,13 @@ import java.util.*;
 final class BrowserInspector {
  static final String TARGET="AccessibilityNodeInfo.targetUrl",ROLE="AccessibilityNodeInfo.chromeRole";
  private static final int NATIVE_LIMIT=180,DOCUMENT_SHELL_LIMIT=24,DOCUMENT_REFRESH_LIMIT=4;
+ // A browser page view covers most of the window; settings lists have no empty view this large.
+ static final int PAGE_AREA_PERCENT=30;
  static final class Result {
   String url="",source="없음",documentUrl="",playerState="",webHint="";
   boolean editing,playerShorts,playerChecked,nativeTruncated,playerTruncated,documentUnavailable,pageYouTube;
+  // pageSeen: a web page tree was read. pageArea: no page tree, but a page-sized empty view is on screen.
+  boolean pageSeen,pageArea;int pagePercent;
   int nativeNodes,documentNodes,playerNodes,documentRefreshes,youtubeLinks,otherLinks,pageEvidence,roleNodes,viewNodes,hiddenWebRoots;
   // A document location wins over a stale toolbar regardless of sibling order.
   void document(String raw){String value=BrowserAddress.clean(raw);if(UrlRules.parse(value)!=null&&!documentKnown())documentUrl=value;}
@@ -45,6 +49,7 @@ final class BrowserInspector {
   ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();
   List<AccessibilityNodeInfo> webRoots=new ArrayList<>();queue.add(AccessibilityNodeInfo.obtain(root));
   AccessibilityNodeInfo emptyArea=null;long emptySize=0;Rect bounds=new Rect();
+  root.getBoundsInScreen(bounds);long rootSize=(long)Math.max(0,bounds.width())*Math.max(0,bounds.height());
   try{
    while(!queue.isEmpty()){
     AccessibilityNodeInfo n=queue.remove();result.nativeNodes++;
@@ -68,7 +73,11 @@ final class BrowserInspector {
     if(found==null)continue;
     try{for(AccessibilityNodeInfo n:found)address(n,result);}finally{for(AccessibilityNodeInfo n:found)if(n!=null)n.recycle();}
    }
-   if(webRoots.isEmpty())result.webHint=probeEmptyArea(emptyArea,result,webRoots);
+   if(webRoots.isEmpty()){
+    result.pagePercent=rootSize<=0?0:(int)Math.min(100,emptySize*100/rootSize);result.pageArea=result.pagePercent>=PAGE_AREA_PERCENT;
+    result.webHint=probeEmptyArea(emptyArea,result,webRoots);
+   }
+   result.pageSeen=!webRoots.isEmpty();if(result.pageSeen)result.pageArea=false;
    result.finishDocument();
    // Chromium exposes no page URL on accessibility nodes, and Samsung Internet hides its
    // toolbar while scrolling. With no readable address, check the page only when this
@@ -114,7 +123,7 @@ final class BrowserInspector {
   StringBuilder out=new StringBuilder("웹 영역 진단: Chromium 역할 ").append(result.roleNodes).append(" · View ").append(result.viewNodes);
   if(result.hiddenWebRoots>0)out.append(" · 숨은 웹 루트 ").append(result.hiddenWebRoots);
   if(area==null)return out.append(" · 빈 영역 없음").toString();
-  out.append(" · 가장 큰 빈 영역 ").append(simpleClass(area.getClassName()));
+  out.append(" · 가장 큰 빈 영역 ").append(simpleClass(area.getClassName())).append(" 화면 ").append(result.pagePercent).append("%");
   long now=System.nanoTime();if(now-lastProbe<probeIntervalNanos)return out.append(" · 새로고침 대기").toString();lastProbe=now;
   if(!area.refresh())return out.append(" · 새로고침 실패").toString();
   out.append(" → 새로고침 후 ").append(simpleClass(area.getClassName())).append(" 자식 ").append(area.getChildCount());

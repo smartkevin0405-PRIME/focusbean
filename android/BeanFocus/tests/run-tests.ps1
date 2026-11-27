@@ -34,8 +34,8 @@ function Run-Suite([string]$Name, [string[]]$Sources, [string[]]$Tests) {
 Push-Location $projectRoot
 try {
     Run-Suite 'pure' (Source-Files 'src/app/bean/focus' @('UrlRules', 'BrowserAddress', 'BrowserScanPolicy', 'BlockPolicy', 'DeviceConstants',
-        'UpdateRules', 'WindowPolicy', 'PipDismissTracker', 'RecentClose', 'InstallTimePolicy', 'TimerRules', 'GrowthRules', 'XpMath', 'ShortsFilterRules')) @(
-        'UrlRulesTest', 'BrowserAddressTest', 'BrowserScanPolicyTest', 'BlockPolicyTest', 'WindowPolicyTest', 'UpdateRulesTest', 'RecentCloseTest', 'TimerRulesTest', 'GrowthRulesTest', 'XpMathTest', 'ShortsFilterRulesTest')
+        'UpdateRules', 'WindowPolicy', 'PipDismissTracker', 'RecentClose', 'InstallTimePolicy', 'TimerRules', 'GrowthRules', 'XpMath', 'ShortsFilterRules', 'ApkStrings')) @(
+        'UrlRulesTest', 'BrowserAddressTest', 'BrowserScanPolicyTest', 'BlockPolicyTest', 'WindowPolicyTest', 'UpdateRulesTest', 'RecentCloseTest', 'TimerRulesTest', 'GrowthRulesTest', 'XpMathTest', 'ShortsFilterRulesTest', 'ApkStringsTest')
     Run-Suite 'state' ((Source-Files 'tests/fakes/android' @('content/Context', 'content/SharedPreferences', 'os/SystemClock', 'os/Build', 'provider/Settings')) +
         @('tests/fakes/app/bean/focus/Prefs.java') + (Source-Files 'src/app/bean/focus' @('FocusLock', 'TimerRules', 'NetworkTime', 'RemovalAccess',
         'BlockPolicy', 'BrowserAddress', 'UrlRules', 'DeviceConstants', 'NewPackageLedger', 'ShortcutCheck', 'InstallTimePolicy'))) @(

@@ -54,10 +54,15 @@ public class FocusService extends AccessibilityService {
 
  private final BroadcastReceiver packageReceiver=new BroadcastReceiver(){public void onReceive(Context c,Intent i){safe("패키지 변경",()->{if(catalog!=null)catalog.invalidate();if(Intent.ACTION_PACKAGE_ADDED.equals(i.getAction())&&i.getData()!=null)SamsungContentBlocker.browserChanged(i.getData().getSchemeSpecificPart());if(Intent.ACTION_PACKAGE_ADDED.equals(i.getAction())&&!i.getBooleanExtra(Intent.EXTRA_REPLACING,false)&&FocusLock.active(FocusService.this)&&i.getData()!=null){String pkg=i.getData().getSchemeSpecificPart();if(pkg!=null){android.content.SharedPreferences p=Prefs.get(FocusService.this);String id=p.getString("lock_id","");if(!id.isEmpty())p.edit().putStringSet("lock_new_pkgs",NewPackageLedger.add(p.getStringSet("lock_new_pkgs",Collections.emptySet()),p.getString("lock_new_pkgs_id",""),id,pkg)).putString("lock_new_pkgs_id",id).apply();}}});}};
  static boolean connected(){return current!=null;}
+ /** Whether Android treats this service as an accessibility tool (declared as a trial for Samsung Browser 30). */
+ private String toolState(){
+  if(Build.VERSION.SDK_INT<31)return "";android.accessibilityservice.AccessibilityServiceInfo info=getServiceInfo();
+  return info==null?"":"\n접근성 도구 선언: "+(info.isAccessibilityTool()?"인식됨":"인식 안 됨");
+ }
  static String diagnostics(Context c){
   if(current==null){String enabled=android.provider.Settings.Secure.getString(c.getContentResolver(),android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);boolean allowed=enabled!=null&&enabled.contains(c.getPackageName()+"/");return allowed?"접근성 설정은 켜짐 · 서비스 연결은 확인 안 됨. 접근성을 껐다 켜주세요.":"접근성 설정에서 집중콩을 켜주세요.";}
   FocusService s=current;long age=Math.max(0,(SystemClock.elapsedRealtime()-s.beat)/1000);
-  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+"\n"+SamsungContentBlocker.status(c)+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
+  return "서비스 연결됨 · 점검 "+age+"초 전\n마지막 감지: "+s.browserState+"\n설정 가드: "+s.guardState+s.toolState()+"\n이번 잠금 새 앱: "+s.newPackageCount()+"개\n"+NetworkTime.status+"\n"+ShortcutCheck.last+"\n창: "+s.windowState+"\n이동: "+s.globalState+"\n점검 "+s.checks+"회 · 이벤트 "+s.events+"회 · 이동 요청 전달 "+s.blocks+"회\n브라우저 검사 "+s.browserScans+"회 · 웹 보조 검사 "+s.playerScans+"회\n검사 시간 최근/평균/최대 "+s.lastBrowserMs+"/"+(s.browserScans==0?0:s.totalBrowserMs/s.browserScans)+"/"+s.maxBrowserMs+"ms (페이지 로딩 시간 아님)\n"+s.youtubeState+"\n"+SamsungContentBlocker.status(c)+(s.errors>0?"\n복구한 오류 "+s.errors+"회 · "+s.errorState:"");
  }
  private int newPackageCount(){android.content.SharedPreferences p=Prefs.get(this);String id=p.getString("lock_id","");return FocusLock.active(this)&&!id.isEmpty()&&id.equals(p.getString("lock_new_pkgs_id",""))?p.getStringSet("lock_new_pkgs",Collections.emptySet()).size():0;}
  private void safe(String phase,Runnable work){try{work.run();}catch(RuntimeException e){String failure=phase+" · "+e.getClass().getSimpleName();if(Looper.myLooper()==Looper.getMainLooper()){errors++;errorState=failure;}else handler.post(()->{errors++;errorState=failure;});}}
@@ -100,7 +105,8 @@ public class FocusService extends AccessibilityService {
 
  private boolean guard(AccessibilityNodeInfo root,String p){
   if(!FocusLock.active(this)||!Prefs.get(this).getBoolean("guard_locked_settings",true)||!(SettingsGuard.surface(p)||BlockerGuard.surface(p)))return false;
-  SettingsGuard.Match m=guardMatch(root,p);guardState=m.reason.isEmpty()?"허용":m.reason;if(m.reason.isEmpty())return false;
+  // Samsung Browser is checked every beat; only a match there may replace the last settings decision.
+  SettingsGuard.Match m=guardMatch(root,p);if(!m.reason.isEmpty()||!BlockerGuard.surface(p))guardState=m.reason.isEmpty()?"허용":m.reason;if(m.reason.isEmpty())return false;
   if(m.own&&m.installer){
    if(RemovalAccess.ready(this)&&RemovalAccess.grant(this))return false;
    if(RemovalAccess.request(this))Toast.makeText(this,"집중콩 · 삭제 허용 대기를 시작했어요. 10분 뒤 삭제 화면을 다시 열거나 앱에서 진행하세요.",Toast.LENGTH_LONG).show();
@@ -214,6 +220,7 @@ public class FocusService extends AccessibilityService {
   if(Prefs.shorts(this)&&!result.editing){
    if(BlockPolicy.browserShorts(result.url,result.editing,result.playerShorts,result.confirmedHome()))backFromShorts(p,root.getWindowId());
    else if(BlockPolicy.unknownBrowser(true,FocusLock.active(this),strict(),catalog.browser(p),Prefs.browser(p),AppCatalog.webHost(p)))restrict(p,"잠금 중 미지원 브라우저 · 내장 웹 화면을 사용하세요");
+   else if(BlockPolicy.uncheckableBrowser(FocusLock.active(this),strict(),BlockerGuard.surface(p),SamsungContentBlocker.live(this),result.pageSeen,result.pageArea,BrowserAddress.known(result.url),UrlRules.isYouTube(result.url)))restrict(p,"잠금 중 삼성 브라우저는 쇼츠를 확인할 수 없어요 · 크롬이나 내장 웹 화면을 사용하세요");
 
   }
   // Event scans also sample the coarse classification. Otherwise a busy event stream

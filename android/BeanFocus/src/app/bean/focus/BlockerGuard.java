@@ -19,7 +19,7 @@ final class BlockerGuard {
   List<AccessibilityNodeInfo> found=root.findAccessibilityNodeInfosByText(DeviceConstants.APP_LABEL);if(found==null)return NONE;
   int result=NONE;
   try{for(AccessibilityNodeInfo n:found){
-   if(n==null||!n.isVisibleToUser()||n.isEditable()||web(n)||!DeviceConstants.APP_LABEL.equals(trim(n.getText())))continue;
+   if(n==null||!n.isVisibleToUser()||n.isEditable()||web(n)||!(DeviceConstants.APP_LABEL.equals(trim(n.getText()))||DeviceConstants.APP_LABEL.equals(trim(n.getContentDescription()))))continue;
    result=Math.max(result,rowSwitch(n));
   }}finally{for(AccessibilityNodeInfo n:found)if(n!=null)n.recycle();}
   return result;

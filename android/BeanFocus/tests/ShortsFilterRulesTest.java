@@ -29,6 +29,8 @@ public class ShortsFilterRulesTest {
   // Re-announce on state change, at first sync, and once the interval passes; not on every beat.
   long h=ShortsFilterRules.REANNOUNCE_MS;ok(ShortsFilterRules.announce(-1,true,0,5));ok(ShortsFilterRules.announce(1,false,1000,1001));
   ok(!ShortsFilterRules.announce(1,true,1000,1000+2000));ok(!ShortsFilterRules.announce(1,true,1000,1000+h-1));ok(ShortsFilterRules.announce(1,true,1000,1000+h));ok(ShortsFilterRules.announce(0,false,1000,1000+h+1));
+  // Live: fetched within the re-announce interval plus an hour; never, future, or stale is not live.
+  long live=ShortsFilterRules.LIVE_MS;ok(ShortsFilterRules.live(1000,1000));ok(ShortsFilterRules.live(1000,1000+live-1));ok(!ShortsFilterRules.live(1000,1000+live));ok(!ShortsFilterRules.live(0,5));ok(!ShortsFilterRules.live(2000,1000));ok(live>h);
   System.out.println("Samsung Internet Shorts filter list: "+checks+" checks passed");
  }
 }

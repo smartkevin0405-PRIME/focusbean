@@ -26,15 +26,20 @@ public class BrowserEmptyPageTest {
   ok(r.playerState.contains("웹 루트 없음"));ok(!r.playerChecked);ok(keep.refreshes()==1);
   ok(r.webHint.contains("가장 큰 빈 영역 FrameLayout")&&r.webHint.contains("자식 0")&&r.webHint.contains("Chromium 역할 0"));
   ok(r.diagnostic().contains("웹 영역 진단"));ok(!r.diagnostic().contains("m.youtube.com"));keep.recycle();
+  ok(r.pageArea&&!r.pageSeen&&r.pagePercent==86&&r.webHint.contains("화면 86%"));
   // A stale empty view that is a Chromium page once re-read: the page is inspected.
   AccessibilityNodeInfo page=BrowserHiddenAddressTest.shorts("m.youtube.com");
   AccessibilityNodeInfo stale=emptyContent().refreshedClass("android.webkit.WebView").refreshedChild(page);page.recycle();
   r=read(browser(stale));
-  ok(r.webHint.contains("웹 루트 확보"));ok(r.playerChecked);ok(r.youtube());ok(r.playerShorts);
+  ok(r.webHint.contains("웹 루트 확보"));ok(r.playerChecked);ok(r.youtube());ok(r.playerShorts);ok(r.pageSeen&&!r.pageArea);
   // A page already exposed: no probe, no extra refresh of other views.
   AccessibilityNodeInfo empty=new AccessibilityNodeInfo().cls("android.widget.FrameLayout").bounds(0,1400,720,1420);AccessibilityNodeInfo emptyKeep=AccessibilityNodeInfo.obtain(empty);
   AccessibilityNodeInfo root=browser(BrowserHiddenAddressTest.watch());root.child(empty);empty.recycle();
-  r=read(root);ok(r.webHint.isEmpty());ok(emptyKeep.refreshes()==0);emptyKeep.recycle();
+  r=read(root);ok(r.webHint.isEmpty());ok(emptyKeep.refreshes()==0);emptyKeep.recycle();ok(r.pageSeen&&!r.pageArea);
+  // A settings list (only small empty views) is not a page area.
+  AccessibilityNodeInfo list=new AccessibilityNodeInfo().pkg(PKG).cls("android.widget.FrameLayout").bounds(0,0,720,1500);
+  for(int i=0;i<6;i++){AccessibilityNodeInfo rowView=new AccessibilityNodeInfo().cls("android.widget.LinearLayout").bounds(0,200+i*150,720,340+i*150);add(rowView,new AccessibilityNodeInfo().cls("android.widget.TextView").text("항목").bounds(40,220+i*150,500,320+i*150));add(list,rowView);}
+  r=read(list);ok(!r.pageArea&&!r.pageSeen&&r.pagePercent<30);
   // A page root reported as not visible is counted, not inspected.
   AccessibilityNodeInfo hidden=BrowserHiddenAddressTest.web().visible(false);
   r=read(browser(hidden));ok(r.hiddenWebRoots==1);ok(r.webHint.contains("숨은 웹 루트 1"));
