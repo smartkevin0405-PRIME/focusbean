@@ -28,6 +28,9 @@ public class BlockerGuardTest {
   ok(read(page(row("AdGuard",true)))==BlockerGuard.NONE);
   // A one-node switch row labelled with the app name.
   AccessibilityNodeInfo single=new AccessibilityNodeInfo().cls("android.widget.Switch").text("집중콩").checked(true);ok(read(page(single))==BlockerGuard.ON);
+  // The label may be the row's content description instead of its text.
+  AccessibilityNodeInfo described=new AccessibilityNodeInfo().cls("android.widget.LinearLayout").description("집중콩");add(described,new AccessibilityNodeInfo().cls("android.widget.Switch").checked(true));
+  ok(read(page(described))==BlockerGuard.ON);
   // Not exact label, no switch nearby, editable search text: no decision.
   ok(read(page(row("집중콩 도움말",true)))==BlockerGuard.NONE);
   AccessibilityNodeInfo plain=page();add(plain,text("집중콩"));ok(read(plain)==BlockerGuard.NONE);

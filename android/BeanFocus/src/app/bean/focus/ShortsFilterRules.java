@@ -29,4 +29,7 @@ final class ShortsFilterRules {
  static final long REANNOUNCE_MS=6L*60*60*1000;
  /** lastAt and now are elapsed-realtime millis of this process. */
  static boolean announce(int last,boolean active,long lastAt,long now){return changed(last,active)||now-lastAt>=REANNOUNCE_MS;}
+ /** A registered blocker re-reads the list after each notice, so a fetch within this window means it is live. */
+ static final long LIVE_MS=REANNOUNCE_MS+60L*60*1000;
+ static boolean live(long servedWall,long nowWall){return servedWall>0&&nowWall>=servedWall&&nowWall-servedWall<LIVE_MS;}
 }

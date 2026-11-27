@@ -17,6 +17,13 @@ public class BlockPolicyTest {
   ok(BlockPolicy.browserShorts("youtube.com",false,true,false));
   ok(!BlockPolicy.browserShorts("youtube.com",true,true,false));
   ok(!BlockPolicy.browserShorts("youtube.com/shorts/stale",false,true,true));
+  // Samsung Browser 30: unreadable page + no live filter -> restricted only during a strict lock.
+  // args: locked, strict, samsung, filterLive, pageSeen, pageArea, addressKnown, youtubeAddress
+  ok(BlockPolicy.uncheckableBrowser(true,true,true,false,false,true,false,false));ok(BlockPolicy.uncheckableBrowser(true,true,true,false,false,true,true,true));
+  ok(!BlockPolicy.uncheckableBrowser(false,true,true,false,false,true,false,false));ok(!BlockPolicy.uncheckableBrowser(true,false,true,false,false,true,false,false));
+  ok(!BlockPolicy.uncheckableBrowser(true,true,false,false,false,true,false,false));ok(!BlockPolicy.uncheckableBrowser(true,true,true,true,false,true,false,false));
+  ok(!BlockPolicy.uncheckableBrowser(true,true,true,false,true,true,false,false));ok(!BlockPolicy.uncheckableBrowser(true,true,true,false,false,false,false,false));
+  ok(!BlockPolicy.uncheckableBrowser(true,true,true,false,false,true,true,false)); // another site's address is readable
   System.out.println("Block policy: "+n+" checks passed");
  }
 }

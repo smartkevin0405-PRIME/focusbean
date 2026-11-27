@@ -4,6 +4,14 @@ final class BlockPolicy {
  static boolean game(boolean enabled,boolean selected,boolean locked,boolean categoryGame){return enabled&&(selected||(locked&&categoryGame));}
  static boolean unknownBrowser(boolean shorts,boolean locked,boolean strict,boolean browser,boolean supported,boolean embeddedHost){return !embeddedHost&&unknownBrowser(shorts,locked,strict,browser,supported);}
  static boolean unknownBrowser(boolean shorts,boolean locked,boolean strict,boolean browser,boolean supported){return shorts&&locked&&strict&&browser&&!supported;}
+ /**
+  * Samsung Browser 30 shows this service neither its page nor its address. During a strict
+  * lock it then counts as unsupported unless its own Shorts filter is live. A readable page,
+  * a non-YouTube address, or a screen with no page view (its settings) is never restricted.
+  */
+ static boolean uncheckableBrowser(boolean locked,boolean strict,boolean samsung,boolean filterLive,boolean pageSeen,boolean pageArea,boolean addressKnown,boolean youtubeAddress){
+  return locked&&strict&&samsung&&!filterLive&&!pageSeen&&pageArea&&(!addressKnown||youtubeAddress);
+ }
  static boolean webShorts(String url,boolean editing){return !editing&&UrlRules.isShorts(url);}
  // A click or a shortened YouTube host alone never proves what is currently open.
  static boolean browserShorts(String url,boolean editing,boolean playerShorts,boolean confirmedHome){return !editing&&!confirmedHome&&(UrlRules.isShorts(url)||playerShorts);}

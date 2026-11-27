@@ -78,6 +78,9 @@ assert 'android:isAccessibilityTool="true"' in (root / 'res/xml/accessibility.xm
 # During a lock, Samsung Internet's ad blocker list cannot turn BeanFocus off.
 service = (src / 'FocusService.java').read_text(encoding='utf-8-sig')
 assert 'SettingsGuard.surface(p)||BlockerGuard.surface(p)' in service and 'BlockerGuard.ownSwitch(root)==BlockerGuard.ON' in service
+# Samsung Browser that cannot be checked is restricted during a strict lock unless its filter is live.
+assert 'BlockPolicy.uncheckableBrowser(FocusLock.active(this),strict(),BlockerGuard.surface(p),SamsungContentBlocker.live(this)' in service
+assert 'SamsungBrowserCheck.run(' in (src / 'MainActivity.java').read_text(encoding='utf-8-sig')
 blocker = (src / 'SamsungContentBlocker.java').read_text(encoding='utf-8-sig')
 assert 'ShortsFilterRules.announce(' in blocker and 'samsung_blocker_notified_wall' in blocker
 assert 'SamsungContentBlocker.browserChanged(' in (src / 'FocusService.java').read_text(encoding='utf-8-sig')
