@@ -81,6 +81,9 @@ assert 'SettingsGuard.surface(p)||BlockerGuard.surface(p)' in service and 'Block
 # Samsung Browser that cannot be checked is restricted during a strict lock unless its filter is live.
 assert 'BlockPolicy.uncheckableBrowser(FocusLock.active(this),strict(),BlockerGuard.surface(p),SamsungContentBlocker.live(this)' in service
 assert 'SamsungBrowserCheck.run(' in (src / 'MainActivity.java').read_text(encoding='utf-8-sig')
+# Main screen tabs: every card belongs to a tab page; nothing is added to a shared long body.
+main_src = (src / 'MainActivity.java').read_text(encoding='utf-8-sig')
+assert 'showTab(' in main_src and 'body.addView' not in main_src and 'page.addView(c,p)' in main_src
 blocker = (src / 'SamsungContentBlocker.java').read_text(encoding='utf-8-sig')
 assert 'ShortsFilterRules.announce(' in blocker and 'samsung_blocker_notified_wall' in blocker
 assert 'SamsungContentBlocker.browserChanged(' in (src / 'FocusService.java').read_text(encoding='utf-8-sig')
