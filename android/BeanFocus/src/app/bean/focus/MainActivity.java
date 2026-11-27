@@ -14,7 +14,11 @@ import android.widget.*;
 import java.util.*;
 
 public class MainActivity extends Activity {
- private LinearLayout body;
+ // Tabs keep the main screen short: only the selected tab's cards are shown under a fixed tab bar.
+ private static final String[] TABS={"잠금","차단","브라우저","성장","연결"};
+ private static final int TAB_LOCK=0,TAB_BLOCK=1,TAB_WEB=2,TAB_GROWTH=3,TAB_LINK=4;
+ private final LinearLayout[] pages=new LinearLayout[TABS.length];private final TextView[] tabs=new TextView[TABS.length];
+ private LinearLayout page;private ScrollView scroll;private TextView headerStatus;
  private TextView status, gameSummary;
  private TextView lockStatus,removalStatus,samsungStatus;
  private TextView petStatus,petSpeech;
@@ -31,23 +35,31 @@ public class MainActivity extends Activity {
  @Override public void onPause(){handler.removeCallbacks(tick);super.onPause();}
  @Override public void onDestroy(){handler.removeCallbacksAndMessages(null);super.onDestroy();}
  private TextView text(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setPadding(0,dp(6),0,dp(6));return t;}
- private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(1);c.setPadding(dp(18),dp(12),dp(18),dp(16));GradientDrawable bg=new GradientDrawable();bg.setColor(Color.WHITE);bg.setCornerRadius(dp(20));c.setBackground(bg);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(14);body.addView(c,p);return c;}
+ private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(1);c.setPadding(dp(18),dp(12),dp(18),dp(16));GradientDrawable bg=new GradientDrawable();bg.setColor(Color.WHITE);bg.setCornerRadius(dp(20));c.setBackground(bg);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(14);page.addView(c,p);return c;}
  private Button button(LinearLayout c,String s,View.OnClickListener click){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextColor(Color.rgb(36,116,92));b.setOnClickListener(click);c.addView(b,new LinearLayout.LayoutParams(-1,dp(52)));return b;}
  private void build(){
-  ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setBackgroundColor(Color.rgb(245,247,243));
-  sc.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i.consumeSystemWindowInsets();});
-  body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(22),dp(22),dp(22),dp(30));sc.addView(body);setContentView(sc);
-  TextView title=text("집중콩",32,Color.rgb(29,60,49));title.setTypeface(null,Typeface.BOLD);body.addView(title);
-  body.addView(text("강의는 보고, 쇼츠는 멈추고.",17,Color.DKGRAY));
-  body.addView(text("0.15 베타 · 삼성 인터넷 쇼츠 차단 보강",12,Color.GRAY));
-  LinearLayout c=card();TextView petTitle=text("프라임콩  ·  PrimeBean",21,Color.rgb(29,60,49));petTitle.setTypeface(null,Typeface.BOLD);c.addView(petTitle);
+  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(Color.rgb(245,247,243));
+  root.setOnApplyWindowInsetsListener((v,i)->{v.setPadding(i.getSystemWindowInsetLeft(),i.getSystemWindowInsetTop(),i.getSystemWindowInsetRight(),i.getSystemWindowInsetBottom());return i.consumeSystemWindowInsets();});
+  LinearLayout header=new LinearLayout(this);header.setOrientation(1);header.setPadding(dp(22),dp(14),dp(22),dp(4));root.addView(header);
+  TextView title=text("집중콩",26,Color.rgb(29,60,49));title.setTypeface(null,Typeface.BOLD);title.setPadding(0,0,0,0);header.addView(title);
+  headerStatus=text("강의는 보고, 쇼츠는 멈추고.",14,Color.DKGRAY);headerStatus.setPadding(0,dp(2),0,0);header.addView(headerStatus);
+  LinearLayout bar=new LinearLayout(this);bar.setOrientation(0);bar.setPadding(dp(16),dp(8),dp(16),dp(8));root.addView(bar);
+  for(int i=0;i<TABS.length;i++){
+   int index=i;TextView t=new TextView(this);t.setText(TABS[i]);t.setTextSize(14);t.setGravity(Gravity.CENTER);t.setPadding(0,dp(10),0,dp(10));t.setContentDescription(TABS[i]+" 탭");t.setOnClickListener(v->showTab(index,true));
+   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(3);lp.rightMargin=dp(3);bar.addView(t,lp);tabs[i]=t;
+  }
+  scroll=new ScrollView(this);scroll.setFillViewport(true);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+  LinearLayout content=new LinearLayout(this);content.setOrientation(1);content.setPadding(dp(22),dp(6),dp(22),dp(30));scroll.addView(content);
+  for(int i=0;i<TABS.length;i++){pages[i]=new LinearLayout(this);pages[i].setOrientation(1);content.addView(pages[i],new LinearLayout.LayoutParams(-1,-2));}
+  setContentView(root);
+  page=pages[TAB_GROWTH];LinearLayout c=card();TextView petTitle=text("프라임콩  ·  PrimeBean",21,Color.rgb(29,60,49));petTitle.setTypeface(null,Typeface.BOLD);c.addView(petTitle);
   c.addView(text("네 집중 곁에서 자라는 콩 연구자",13,Color.GRAY));petView=new PetView(this);c.addView(petView,new LinearLayout.LayoutParams(-1,dp(230)));
   petStatus=text("",15,Color.DKGRAY);c.addView(petStatus);petProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);petProgress.setMax(1000);c.addView(petProgress,new LinearLayout.LayoutParams(-1,dp(12)));petSpeech=text("",14,Color.rgb(36,116,92));c.addView(petSpeech);
   button(c,"연구실 꾸미기 · 성장 보상",v->chooseStyle());
   button(c,"XP 수식 연구실",v->startActivity(new Intent(this,FormulaActivity.class)));
   button(c,"시간 관측소 · 상세 통계",v->startActivity(new Intent(this,StatsActivity.class)));
   c.addView(text("차단 연결 유지 시간을 선택한 수식으로 XP에 반영합니다. 수식 연구실에서 원하는 수식을 고를 수 있습니다. 접근성 연결과 차단이 켜져 있고, 쇼츠 또는 선택한 게임 차단이 설정돼 있어야 적립됩니다. 공부량을 측정하는 기능은 아닙니다. 화면이 꺼진 뒤 기기가 절전 상태라면 일부 시간이 적립되지 않을 수 있습니다.",12,Color.GRAY));
-  c=card();Switch enabled=new Switch(this);enabledSwitch=enabled;enabled.setText("차단 켜기");enabled.setTextSize(19);enabled.setPadding(0,dp(12),0,dp(12));enabled.setChecked(Prefs.enabled(this));c.addView(enabled);enabled.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("enabled",on).apply();FocusService.reload();refresh();});
+  page=pages[TAB_BLOCK];c=card();Switch enabled=new Switch(this);enabledSwitch=enabled;enabled.setText("차단 켜기");enabled.setTextSize(19);enabled.setPadding(0,dp(12),0,dp(12));enabled.setChecked(Prefs.enabled(this));c.addView(enabled);enabled.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("enabled",on).apply();FocusService.reload();refresh();});
   Switch shorts=new Switch(this);shortsSwitch=shorts;shorts.setText("유튜브 쇼츠 차단");shorts.setChecked(Prefs.get(this).getBoolean("shorts",true));shorts.setPadding(0,dp(12),0,dp(12));c.addView(shorts);shorts.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("shorts",on).apply();FocusService.reload();});
   strictSwitch=new Switch(this);strictSwitch.setText("잠금 중 미지원 브라우저 제한");strictSwitch.setChecked(Prefs.get(this).getBoolean("strict_locked_web",true));c.addView(strictSwitch);strictSwitch.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("strict_locked_web",on).apply();FocusService.reload();});
   guardSwitch=new Switch(this);guardSwitch.setText("잠금 중 차단 해제 설정 가드");guardSwitch.setChecked(Prefs.get(this).getBoolean("guard_locked_settings",true));c.addView(guardSwitch);guardSwitch.setOnCheckedChangeListener((v,on)->{if(syncing)return;if(FocusLock.active(this)){refresh();return;}Prefs.get(this).edit().putBoolean("guard_locked_settings",on).apply();FocusService.reload();});
@@ -57,7 +69,7 @@ public class MainActivity extends Activity {
   c.addView(text("선택 옵션입니다. 잠금 시작 시각과 앱의 최초 설치 시각을 비교해 새 일반 앱을 제한합니다. 시스템 앱과 전화·긴급 기능은 제외합니다. 조회할 수 없는 다른 프로필 앱 창은 선택한 옵션으로 차단하지만, 보안 폴더의 창·이벤트 자체가 보이지 않으면 차단할 수 없습니다.",12,Color.GRAY));
   c.addView(text("이 옵션은 미지원 브라우저만 제한합니다. 삼성 인터넷 등 지원 브라우저에서 유튜브 도메인만 읽히거나 주소창이 숨겨진 경우, 화면 안 링크로 유튜브인지 확인한 뒤 쇼츠 플레이어 버튼 배치를 확인합니다. 주소·쇼츠 링크·플레이어 신호를 모두 읽지 못하면 감지가 누락될 수 있습니다. 일반 유튜브는 도메인만 보인다는 이유로 차단하지 않습니다. 삼성 브라우저가 페이지와 주소를 모두 보여주지 않고 광고 차단 기능도 멈춰 있으면, 잠금 중에는 삼성 브라우저를 미지원 브라우저처럼 제한합니다. 다른 사이트 주소가 읽히거나 설정 화면일 때는 제한하지 않습니다.",12,Color.GRAY));
   c.addView(text("경로가 확인된 일반 영상은 허용합니다. 내장 웹 화면에서 새 채널을 만나면 강의/여가 분류를 물어봅니다.",14,Color.DKGRAY));
-  c=card();c.addView(text("집중 잠금 · 조기 해제는 10분 뒤",20,Color.rgb(29,60,49)));
+  page=pages[TAB_LOCK];c=card();c.addView(text("집중 잠금 · 조기 해제는 10분 뒤",20,Color.rgb(29,60,49)));
   lockStatus=text("",16,Color.DKGRAY);c.addView(lockStatus);
   c.addView(text("먼저 게임과 쇼츠 차단을 설정하세요. 잠금 중에는 차단 스위치와 게임 목록을 바꿀 수 없습니다. 정해진 시간이 끝나면 설정 잠금이 풀리며, 기존 차단은 유지됩니다.",14,Color.DKGRAY));
   startLockButton=button(c,"집중 잠금 시작",v->startLock());
@@ -67,9 +79,9 @@ public class MainActivity extends Activity {
   c=card();c.addView(text("앱 삭제 · 10분 생각할 시간",20,Color.rgb(29,60,49)));removalStatus=text("",15,Color.DKGRAY);c.addView(removalStatus);
   c.addView(text("집중 잠금 중에도 삭제 허용을 요청할 수 있습니다. 10분 뒤 직접 진행하면 집중콩의 삭제·앱 정보 화면을 5분 동안 허용합니다. 허용된 5분 동안 앱 정보에서 강제 중지·삭제·데이터 삭제를 하면 차단도 함께 꺼져요(조기 해제와 같은 비용). 잠금이 끝나면 대기 없이 삭제할 수 있습니다. 재부팅하면 삭제 대기는 다시 요청해야 합니다.",13,Color.DKGRAY));
   removalButton=button(c,"삭제 허용 요청 · 10분 대기",v->removalAction());cancelRemovalButton=button(c,"삭제 허용 요청 취소",v->{RemovalAccess.cancel(this);FocusService.reload();refresh();});
-  c=card();c.addView(text("유튜브 앱",20,Color.rgb(29,60,49)));
+  page=pages[TAB_BLOCK];c=card();c.addView(text("유튜브 앱",20,Color.rgb(29,60,49)));
   c.addView(text("쇼츠 차단이 켜져 있으면 집중 잠금 중에는 유튜브 앱 전체를 홈으로 보냅니다. 일반 영상은 내장 웹 화면을 이용하세요. 잠금 밖에서는 쇼츠 플레이어 ID가 확인된 화면만 뒤로 보내고 남아 있으면 홈으로 이동합니다. 유튜브 업데이트로 ID가 바뀌면 감지가 누락될 수 있습니다.",14,Color.DKGRAY));
-  c=card();c.addView(text("01  웹 유튜브",20,Color.rgb(29,60,49)));
+  page=pages[TAB_WEB];c=card();c.addView(text("웹 유튜브",20,Color.rgb(29,60,49)));
   c.addView(text("주소창의 텍스트·설명, 클릭한 쇼츠 링크와 웹 쇼츠 플레이어의 버튼 배치를 확인합니다. 쇼츠에서 뒤로 이동한 뒤에도 쇼츠 주소나 화면 신호가 남으면 홈으로 이동합니다. 주소창 숨김·인앱 화면·브라우저 변경에 따라 감지가 누락될 수 있습니다.",14,Color.DKGRAY));
   button(c,"쇼츠 차단 웹 화면 열기",v->startActivity(new Intent(this,StudyActivity.class)));
   c.addView(text("앱 안의 웹 화면은 별도로 쇼츠 링크·화면을 차단합니다. 로그인 없이 사용하세요. 유튜브 화면 변경에 따라 보완이 필요할 수 있습니다.",12,Color.GRAY));
@@ -79,8 +91,8 @@ public class MainActivity extends Activity {
   button(c,"삼성 인터넷 광고 차단 기능 설정 열기",v->{if(!SamsungContentBlocker.openSettings(this))Toast.makeText(this,"삼성 인터넷이 없거나 광고 차단 기능 설정을 열 수 없어요",Toast.LENGTH_LONG).show();});
   button(c,"삼성 브라우저 차단기 점검 · 결과 복사",v->runSamsungCheck());
   c.addView(text("목록에서 집중콩을 켜세요. 목록에서 집중콩이 사라졌으면 이 버튼으로 다시 열어 켜세요. 버튼을 누를 때마다 삼성 인터넷에 목록을 다시 알립니다. 삼성 인터넷 버전에 따라 일부 규칙이 적용되지 않을 수 있습니다. 집중 잠금 중에는 광고 차단 기능 화면에서 켜진 집중콩이 보이면 화면을 닫아 끄지 못하게 합니다. 꺼져 있을 때는 잠금 중에도 켤 수 있습니다. 잠금 밖에서 끄면 이 보호도 꺼집니다. 쇼츠 차단 스위치를 끄면 쇼츠 규칙을 뺀 목록을 전달합니다.",12,Color.GRAY));
-  c=card();c.addView(text("02  게임 차단",20,Color.rgb(29,60,49)));gameSummary=text("",14,Color.DKGRAY);c.addView(gameSummary);gamesButton=button(c,"차단할 게임 선택",v->chooseGames());
-  c=card();c.addView(text("03  접근성 연결",20,Color.rgb(29,60,49)));status=text("",14,Color.DKGRAY);c.addView(status);
+  page=pages[TAB_BLOCK];c=card();c.addView(text("게임 차단",20,Color.rgb(29,60,49)));gameSummary=text("",14,Color.DKGRAY);c.addView(gameSummary);gamesButton=button(c,"차단할 게임 선택",v->chooseGames());
+  page=pages[TAB_LINK];c=card();c.addView(text("접근성 연결",20,Color.rgb(29,60,49)));status=text("",14,Color.DKGRAY);c.addView(status);
   c.addView(text("다른 앱의 게임·웹 쇼츠 차단에 필요합니다. 지원 브라우저 주소와 선택한 게임의 실행을 기기 안에서만 확인합니다. 런처 아이콘 없는 앱도 조회하기 위해 전체 패키지 조회 권한을 사용하며 설치 이벤트를 기기 안에 기록합니다. 전체 주소는 기록하지 않습니다. 이용 시간·채널 분류·차단 통계는 기기에 저장하고 서버로 전송하지 않습니다.",14,Color.DKGRAY));
   c.addView(text("삼성 기기: 설정 → 배터리 → 백그라운드 사용 제한 → 절전 예외 앱에 집중콩을 추가하세요. 앱 정보 → 배터리에서 ‘제한 없음’도 확인하세요. 접근성 서비스는 일반 앱의 실행 중 목록과 표시 방식이 다르므로 위의 연결·점검 시각으로 확인하세요.",12,Color.GRAY));
   button(c,"화면 view ID 수집 예약 · 30초",v->{boolean ready=FocusService.requestDump();Toast.makeText(this,ready?"30초 안에 유튜브·브라우저·설정 화면으로 이동하세요. 그동안 표시된 ID를 수집합니다.":"접근성을 먼저 연결하세요",Toast.LENGTH_LONG).show();});
@@ -90,7 +102,18 @@ public class MainActivity extends Activity {
   button(c,"접근성 설정 열기",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
   button(c,"이 앱의 정보 열기",v->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName()))));
   c.addView(text("APK 설치 후 ‘제한된 설정’이 표시되면 앱 정보의 메뉴에서 허용할 수 있는지 확인하세요. 기기 보안 설정이 설치나 권한을 막으면 보안 기능을 해제하지 마세요.",12,Color.GRAY));
-  body.addView(text("바로가기 설정을 읽지 못하는 기기에서는 등록 여부를 확실히 알 수 없습니다. 전화·긴급 통화·SystemUI는 차단하지 않습니다. 잠금 중에는 선택한 설정 가드가 적용됩니다. 루팅·유튜브 앱 수정 없이 동작하며 광고·추적 SDK는 없습니다.",12,Color.GRAY));
+  page.addView(text("0.15 베타 · 삼성 인터넷 쇼츠 차단 보강",12,Color.GRAY));
+  page.addView(text("바로가기 설정을 읽지 못하는 기기에서는 등록 여부를 확실히 알 수 없습니다. 전화·긴급 통화·SystemUI는 차단하지 않습니다. 잠금 중에는 선택한 설정 가드가 적용됩니다. 루팅·유튜브 앱 수정 없이 동작하며 광고·추적 SDK는 없습니다.",12,Color.GRAY));
+  int saved=Prefs.get(this).getInt("main_tab",TAB_LOCK);showTab(saved>=0&&saved<TABS.length?saved:TAB_LOCK,false);
+ }
+ private void showTab(int index,boolean remember){
+  for(int i=0;i<pages.length;i++){
+   boolean on=i==index;pages[i].setVisibility(on?View.VISIBLE:View.GONE);
+   GradientDrawable bg=new GradientDrawable();bg.setCornerRadius(dp(18));bg.setColor(on?Color.rgb(36,116,92):Color.WHITE);
+   TextView t=tabs[i];t.setBackground(bg);t.setTextColor(on?Color.WHITE:Color.rgb(29,60,49));t.setTypeface(null,on?Typeface.BOLD:Typeface.NORMAL);t.setSelected(on);
+  }
+  scroll.scrollTo(0,0);
+  if(remember)Prefs.get(this).edit().putInt("main_tab",index).apply();
  }
  private void openAppInfo(){startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())));}
  private void removalAction(){
@@ -116,7 +139,7 @@ public class MainActivity extends Activity {
   if(lockStatus==null)return;boolean locked=FocusLock.active(this),requested=FocusLock.requested(this);syncing=true;enabledSwitch.setChecked(Prefs.enabled(this));shortsSwitch.setChecked(Prefs.get(this).getBoolean("shorts",true));strictSwitch.setChecked(Prefs.get(this).getBoolean("strict_locked_web",true));guardSwitch.setChecked(Prefs.get(this).getBoolean("guard_locked_settings",true));newAppsSwitch.setChecked(Prefs.get(this).getBoolean("block_new_apps",false));otherProfilesSwitch.setChecked(Prefs.get(this).getBoolean("block_other_profiles",true));syncing=false;enabledSwitch.setEnabled(!locked);shortsSwitch.setEnabled(!locked);strictSwitch.setEnabled(!locked);guardSwitch.setEnabled(!locked);newAppsSwitch.setEnabled(!locked);otherProfilesSwitch.setEnabled(!locked);gamesButton.setEnabled(!locked);startLockButton.setVisibility(locked?View.GONE:View.VISIBLE);unlockButton.setVisibility(locked?View.VISIBLE:View.GONE);cancelUnlockButton.setVisibility(requested?View.VISIBLE:View.GONE);
   String message="설정 잠금 꺼짐 · 차단 설정 변경 가능";
   if(locked){message="집중 잠금 남은 시간 "+FocusLock.format(FocusLock.remaining(this));if(requested)message+="\n"+(FocusLock.ready(this)?"대기 완료 · 아래 버튼으로 해제 가능":"조기 해제까지 "+FocusLock.format(FocusLock.waitRemaining(this)));}
-  lockStatus.setText(message);unlockButton.setEnabled(!requested||FocusLock.ready(this));unlockButton.setText(FocusLock.ready(this)?"설정 잠금 해제":requested?"해제 대기 중":"조기 해제 요청 · 10분 대기");
+  lockStatus.setText(message);if(headerStatus!=null)headerStatus.setText(locked?"집중 잠금 중 · 남은 시간 "+FocusLock.format(FocusLock.remaining(this)):"강의는 보고, 쇼츠는 멈추고.");unlockButton.setEnabled(!requested||FocusLock.ready(this));unlockButton.setText(FocusLock.ready(this)?"설정 잠금 해제":requested?"해제 대기 중":"조기 해제 요청 · 10분 대기");
  }
  private void chooseStyle(){long xp=GrowthTracker.xp(this);String[] names={"성장에 맞춰 자동 꾸미기","연구복 · 50 XP","파동 고리 · 150 XP","양자 수식 · 400 XP"};for(int i=1;i<names.length;i++)if(!GrowthRules.styleUnlocked(i,xp))names[i]+=" · 아직 잠김";int selected=Prefs.get(this).getInt("pet_style",0);new AlertDialog.Builder(this).setTitle("프라임콩의 연구실").setSingleChoiceItems(names,selected,(d,i)->{if(!GrowthRules.styleUnlocked(i,GrowthTracker.xp(this))){Toast.makeText(this,"함께 쌓은 유지 시간으로 해금돼요",Toast.LENGTH_SHORT).show();return;}Prefs.get(this).edit().putInt("pet_style",i).apply();petView.invalidate();d.dismiss();}).setNegativeButton("닫기",null).show();}
  private void startLock(){if(FocusLock.active(this))return;if(!FocusService.connected()){new AlertDialog.Builder(this).setMessage("게임·외부 브라우저 차단을 위해 접근성을 먼저 켜주세요. 내장 웹 화면만 사용한다면 그대로 시작할 수도 있습니다.").setNegativeButton("취소",null).setPositiveButton("내장 웹 화면용으로 시작",(d,w)->pickDuration()).show();}else pickDuration();}
